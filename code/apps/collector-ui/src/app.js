@@ -180,11 +180,25 @@ class TimemapCollectorElement extends HTMLElement {
           background: #ffffff;
           display: grid;
           gap: 0.5rem;
+          cursor: pointer;
+          transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+        }
+
+        .asset-card:hover {
+          border-color: #93c5fd;
+          box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+          background: #f8fbff;
+        }
+
+        .asset-card:focus-visible {
+          outline: 2px solid #2563eb;
+          outline-offset: 2px;
         }
 
         .asset-card.is-selected {
           border-color: #0f6cc6;
-          box-shadow: 0 0 0 1px #66a6e8 inset;
+          box-shadow: 0 0 0 1px #66a6e8 inset, 0 3px 10px rgba(15, 108, 198, 0.16);
+          background: #f5faff;
         }
 
         .thumb {
@@ -706,9 +720,23 @@ class TimemapCollectorElement extends HTMLElement {
     for (const item of this.state.assets) {
       const card = document.createElement('article');
       card.className = 'asset-card';
+      card.setAttribute('role', 'button');
+      card.setAttribute('tabindex', '0');
+      card.setAttribute('aria-label', `Select asset ${item.title || item.id}`);
+      card.setAttribute('aria-selected', this.state.selectedItemId === item.id ? 'true' : 'false');
       if (this.state.selectedItemId === item.id) {
         card.classList.add('is-selected');
       }
+
+      card.addEventListener('click', () => {
+        this.selectItem(item.id);
+      });
+      card.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          this.selectItem(item.id);
+        }
+      });
 
       const preview = this.createPreviewNode(item);
 
@@ -742,16 +770,20 @@ class TimemapCollectorElement extends HTMLElement {
       openBtn.type = 'button';
       openBtn.className = 'btn';
       openBtn.textContent = 'Open';
+      openBtn.addEventListener('click', (event) => {
+        event.stopPropagation();
+      });
       openBtn.addEventListener('click', () => {
-        this.state.selectedItemId = item.id;
-        this.renderAssets();
-        this.renderEditor();
+        this.selectItem(item.id);
       });
 
       const toggleBtn = document.createElement('button');
       toggleBtn.type = 'button';
       toggleBtn.className = 'btn';
       toggleBtn.textContent = included ? 'Exclude' : 'Include';
+      toggleBtn.addEventListener('click', (event) => {
+        event.stopPropagation();
+      });
       toggleBtn.addEventListener('click', async () => {
         await this.updateItem(item.id, { include: !included });
       });
@@ -760,6 +792,16 @@ class TimemapCollectorElement extends HTMLElement {
       card.append(preview, title, badges, actions);
       grid.appendChild(card);
     }
+  }
+
+  selectItem(itemId) {
+    if (this.state.selectedItemId === itemId) {
+      return;
+    }
+
+    this.state.selectedItemId = itemId;
+    this.renderAssets();
+    this.renderEditor();
   }
 
   findSelectedItem() {
