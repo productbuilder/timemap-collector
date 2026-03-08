@@ -3,77 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TimeMap Collector MVP</title>
-    <link rel="stylesheet" href="./styles.css" />
+    <title>TimeMap Collector</title>
   </head>
   <body>
-    <header class="page-header">
-      <h1>TimeMap Collector MVP</h1>
-      <p>Connect a source, edit metadata, and export a manifest for TimeMap ingestion.</p>
-    </header>
-
-    <main class="layout">
-      <section class="panel" id="connection-panel">
-        <h2>Connection / Source</h2>
-        <div class="field-row">
-          <label for="providerType">Provider</label>
-          <select id="providerType">
-            <option value="local">Example dataset</option>
-            <option value="public-url">Public URL</option>
-            <option value="github">GitHub (stub)</option>
-          </select>
-        </div>
-        <div class="field-row">
-          <label for="providerInput">Manifest URL / Path</label>
-          <input id="providerInput" type="text" value="/examples/test-collection/collection.json" />
-        </div>
-        <button id="connectBtn" type="button">Connect</button>
-        <p id="connectionStatus" class="status">Not connected.</p>
-        <pre id="capabilities" class="code-block"></pre>
-      </section>
-
-      <section class="panel" id="browser-panel">
-        <h2>Asset Browser</h2>
-        <p id="assetCount">No assets loaded.</p>
-        <div id="assetGrid" class="asset-grid"></div>
-      </section>
-
-      <section class="panel" id="editor-panel">
-        <h2>Item Editor</h2>
-        <p id="editorStatus">Select an item card to edit metadata.</p>
-        <div id="editorForm" class="editor hidden">
-          <img id="mediaPreview" alt="Selected media preview" class="preview" />
-
-          <div class="field-row"><label for="itemTitle">Title</label><input id="itemTitle" type="text" /></div>
-          <div class="field-row"><label for="itemDescription">Description</label><textarea id="itemDescription" rows="3"></textarea></div>
-          <div class="field-row"><label for="itemCreator">Creator</label><input id="itemCreator" type="text" /></div>
-          <div class="field-row"><label for="itemDate">Date / Period</label><input id="itemDate" type="text" /></div>
-          <div class="field-row"><label for="itemLocation">Location</label><input id="itemLocation" type="text" /></div>
-          <div class="field-row"><label for="itemLicense">License</label><input id="itemLicense" type="text" /></div>
-          <div class="field-row"><label for="itemAttribution">Attribution</label><input id="itemAttribution" type="text" /></div>
-          <div class="field-row"><label for="itemSource">Source</label><input id="itemSource" type="text" /></div>
-          <div class="field-row"><label for="itemTags">Tags (comma separated)</label><input id="itemTags" type="text" /></div>
-          <div class="field-row checkbox-row"><label for="itemInclude">Include in manifest</label><input id="itemInclude" type="checkbox" /></div>
-
-          <button id="saveItemBtn" type="button">Save Metadata</button>
-        </div>
-      </section>
-
-      <section class="panel" id="manifest-panel">
-        <h2>Manifest Preview / Export</h2>
-        <div class="field-row"><label for="collectionId">Collection ID</label><input id="collectionId" type="text" value="col-mvp-export" /></div>
-        <div class="field-row"><label for="collectionTitle">Collection Title</label><input id="collectionTitle" type="text" value="TimeMap Collector Export" /></div>
-        <div class="field-row"><label for="collectionDescription">Collection Description</label><textarea id="collectionDescription" rows="2">Manifest generated from TimeMap Collector MVP.</textarea></div>
-
-        <div class="button-row">
-          <button id="generateManifestBtn" type="button">Generate collection.json</button>
-          <button id="copyManifestBtn" type="button">Copy</button>
-          <button id="downloadManifestBtn" type="button">Download</button>
-        </div>
-        <pre id="manifestPreview" class="code-block"></pre>
-      </section>
-    </main>
-
-    <script type="module" src="./src/main.js"></script>
+    <timemap-collector></timemap-collector>
+    <script type="module" src="./src/index.js"></script>
   </body>
 </html>

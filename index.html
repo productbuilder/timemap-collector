@@ -1,43 +1,59 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TimeMap Collector</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        margin: 2rem;
-        max-width: 860px;
-        line-height: 1.5;
-      }
-      h1 { margin-bottom: 0.4rem; }
-      ul { padding-left: 1.2rem; }
-      code { background: #f1f5f9; padding: 0.1rem 0.3rem; border-radius: 4px; }
-    </style>
-  </head>
-  <body>
-    <h1>TimeMap Collector</h1>
-    <p>
-      Lightweight publication and metadata management for cultural heritage media.
-      This repository contains the MVP Collector app, provider packages, docs, and example datasets.
-    </p>
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>TimeMap Collector</title>
+		<link rel="stylesheet" href="./index.css" />
+	</head>
+	<body>
+		<div class="site-header">
+			<div class="site-header-inner">
+				<div class="site-brand">TimeMap Collector</div>
+				<nav class="site-nav" aria-label="Primary navigation">
+					<a href="./" class="is-active" aria-current="page">Home</a>
+					<a href="./docs/">Documentation</a>
+					<a href="./demo/">Demo</a>
+				</nav>
+			</div>
+		</div>
 
-    <h2>Quick Links</h2>
-    <ul>
-      <li><a href="./demo/">Demo</a></li>
-      <li><a href="./docs/">Docs</a></li>
-      <li><a href="./code/apps/collector-ui/">Collector UI</a></li>
-      <li><a href="./examples/test-collection/">Example dataset</a></li>
-    </ul>
+		<main>
+			<header>
+				<h1>TimeMap Collector</h1>
+				<p>
+					Shadow DOM Web Component for browsing cultural heritage assets,
+					editing lightweight metadata, and exporting <code>collection.json</code>.
+				</p>
+				<div class="chip-row" aria-label="MVP status chips">
+					<span class="chip ok">Local provider: working</span>
+					<span class="chip ok">Public URL provider: read-only working</span>
+					<span class="chip stub">GitHub provider: stub</span>
+				</div>
+			</header>
 
-    <h2>Repository Layout</h2>
-    <ul>
-      <li><code>./code/</code> implementation code (apps + packages)</li>
-      <li><code>./examples/</code> fixtures and test collections</li>
-      <li><code>./projects/</code> planning and architecture docs</li>
-    </ul>
+			<section>
+				<h2>Quick Entry Points</h2>
+				<div class="link-grid">
+					<a class="link-card" href="./demo/"><strong>Demo</strong><br />Full component integration page.</a>
+					<a class="link-card" href="./docs/"><strong>Documentation</strong><br />Embedding and MVP behavior docs.</a>
+					<a class="link-card" href="./code/apps/collector-ui/"><strong>Collector App Entry</strong><br />Direct element host page.</a>
+					<a class="link-card" href="./examples/test-collection/"><strong>Example dataset</strong><br />Fixture data for local mode.</a>
+				</div>
+			</section>
 
-    <script type="module" src="./src/index.js"></script>
-  </body>
+			<section>
+				<h2>Embed Snippet</h2>
+				<pre><code>&lt;script type="module" src="/code/apps/collector-ui/src/index.js"&gt;&lt;/script&gt;
+&lt;timemap-collector&gt;&lt;/timemap-collector&gt;</code></pre>
+			</section>
+
+			<section>
+				<h2>Live Component Preview</h2>
+				<timemap-collector></timemap-collector>
+			</section>
+		</main>
+		<script type="module" src="./code/apps/collector-ui/src/index.js"></script>
+		<script type="module" src="./src/index.js"></script>
+	</body>
 </html>

@@ -1,34 +1,46 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TimeMap Collector Demo</title>
-    <style>
-      body { font-family: Arial, sans-serif; margin: 1rem; }
-      h1 { margin-bottom: 0.4rem; }
-      p { max-width: 900px; }
-      iframe {
-        width: 100%;
-        height: 78vh;
-        border: 1px solid #cbd5e1;
-        border-radius: 8px;
-      }
-      .links { margin: 0.8rem 0 1rem; }
-      .links a { margin-right: 1rem; }
-    </style>
-  </head>
-  <body>
-    <h1>TimeMap Collector Demo</h1>
-    <p>
-      This demo loads the current Collector MVP UI. Use provider mode <strong>Example dataset</strong>
-      with path <code>/examples/test-collection/collection.json</code> for the fastest end-to-end flow.
-    </p>
-    <div class="links">
-      <a href="../code/apps/collector-ui/" target="_blank" rel="noopener">Open Collector UI in new tab</a>
-      <a href="../examples/test-collection/" target="_blank" rel="noopener">Open example dataset</a>
-      <a href="../docs/">Open docs</a>
-    </div>
-    <iframe src="../code/apps/collector-ui/" title="TimeMap Collector MVP"></iframe>
-  </body>
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>TimeMap Collector Demo</title>
+		<link rel="stylesheet" href="../index.css" />
+		<link rel="stylesheet" href="./index.css" />
+	</head>
+	<body>
+		<div class="site-header">
+			<div class="site-header-inner">
+				<div class="site-brand">TimeMap Collector</div>
+				<nav class="site-nav" aria-label="Primary navigation">
+					<a href="../">Home</a>
+					<a href="../docs/">Documentation</a>
+					<a href="./" class="is-active" aria-current="page">Demo</a>
+				</nav>
+			</div>
+		</div>
+		<main>
+			<header>
+				<h1>TimeMap Collector Web Component Demo</h1>
+				<p>
+					This page mounts <code>&lt;timemap-collector&gt;</code> directly. Open
+					<code>Sources</code> in the component header and connect using
+					<code>/examples/test-collection/collection.json</code>.
+				</p>
+			</header>
+
+			<section>
+				<h2>Embedded Component</h2>
+				<div class="consumer-toolbar">
+					<a href="../examples/test-collection/" target="_blank" rel="noopener">Open example dataset</a>
+					<a href="../docs/">Open docs</a>
+					<a href="../code/apps/collector-ui/" target="_blank" rel="noopener">Open app entry</a>
+				</div>
+				<div class="demo-shell">
+					<p class="demo-caption">Provider and manifest controls are now dialog-based inside the component header.</p>
+					<timemap-collector></timemap-collector>
+				</div>
+			</section>
+		</main>
+		<script type="module" src="../code/apps/collector-ui/src/index.js"></script>
+	</body>
 </html>

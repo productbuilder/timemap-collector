@@ -1,0 +1,15 @@
+/* Demo host-side styling for timemap-collector */
+
+timemap-collector {
+	display: block;
+}
+
+.demo-shell {
+	display: grid;
+	gap: 0.65rem;
+}
+
+.demo-caption {
+	color: #475569;
+	font-size: 0.95rem;
+}

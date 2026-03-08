@@ -1,15 +1,26 @@
-# Collector UI (MVP)
+# Collector UI (Web Component MVP)
 
-Minimal browser app for the first TimeMap Collector vertical slice.
+TimeMap Collector UI is exposed as a Web Component:
+
+`timemap-collector`
+
+## Embedding
+
+```html
+<script type="module" src="/code/apps/collector-ui/src/index.js"></script>
+<timemap-collector></timemap-collector>
+```
 
 ## Features
 
-- source/provider selection (example dataset, public URL, GitHub stub)
-- asset card browser with thumbnail, completeness, license, include/exclude state
-- item editor for lightweight metadata
-- manifest generation, preview, copy, and download
+- Shadow DOM component shell with encapsulated styles
+- white SaaS-style header with toolbar actions
+- source/provider controls in a dialog
+- manifest export controls in a dialog
+- responsive card grid viewport
+- metadata edit sidebar for selected item
 
 ## Notes
 
-- Built as ES modules with no build step for quick MVP iteration.
+- Built as ES modules with no build step.
 - Intended for local static hosting from repository root.

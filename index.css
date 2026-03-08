@@ -1,0 +1,232 @@
+﻿:root {
+	color-scheme: light;
+
+	--site-font-family: "Segoe UI", Tahoma, sans-serif;
+	--site-mono-font: Consolas, Monaco, monospace;
+
+	--site-text-color: #111827;
+	--site-bg-color: #f8fafc;
+	--site-surface-color: #ffffff;
+	--site-border-color: #e5e7eb;
+	--site-link-color: #0369a1;
+
+	--site-code-bg: #0f172a;
+	--site-code-text: #e2e8f0;
+
+	--site-radius: 0.5rem;
+	--site-radius-small: 0.25rem;
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	font-family: var(--site-font-family);
+	color: var(--site-text-color);
+	background: var(--site-bg-color);
+	line-height: 1.55;
+}
+
+.site-header {
+	position: sticky;
+	top: 0;
+	z-index: 20;
+	background: rgba(255, 255, 255, 0.96);
+	backdrop-filter: blur(4px);
+	border-bottom: 1px solid var(--site-border-color);
+	box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+}
+
+.site-header-inner {
+	max-width: 1080px;
+	margin: 0 auto;
+	padding: 0.8rem 1rem;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.6rem 1rem;
+}
+
+.site-brand {
+	font-weight: 700;
+	color: var(--site-text-color);
+}
+
+.site-nav {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35rem;
+}
+
+.site-nav a {
+	color: var(--site-link-color);
+	text-decoration: none;
+	font-weight: 600;
+	padding: 0.3rem 0.55rem;
+	border-radius: var(--site-radius-small);
+}
+
+.site-nav a:hover,
+.site-nav a:focus-visible {
+	text-decoration: underline;
+}
+
+.site-nav a.is-active,
+.site-nav a[aria-current="page"] {
+	background: #e0f2fe;
+	color: #0c4a6e;
+	text-decoration: none;
+}
+
+main {
+	max-width: 1080px;
+	margin: 0 auto;
+	padding: 1.2rem 1rem 3rem;
+	display: grid;
+	gap: 1.1rem;
+}
+
+header,
+section {
+	background: var(--site-surface-color);
+	border: 1px solid var(--site-border-color);
+	border-radius: var(--site-radius);
+	padding: 1rem 1.1rem;
+}
+
+h1,
+h2,
+h3 {
+	margin: 0 0 0.55rem;
+}
+
+p,
+ul,
+ol {
+	margin: 0;
+}
+
+ul,
+ol {
+	padding-left: 1.2rem;
+	display: grid;
+	gap: 0.2rem;
+}
+
+a {
+	color: var(--site-link-color);
+}
+
+pre {
+	margin: 1rem 0 0;
+	padding: 0.8rem;
+	overflow: auto;
+	background: var(--site-code-bg);
+	color: var(--site-code-text);
+	border-radius: 8px;
+}
+
+code {
+	font-family: var(--site-mono-font);
+}
+
+table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+th,
+td {
+	text-align: left;
+	padding: 0.55rem;
+	border-bottom: 1px solid var(--site-border-color);
+	vertical-align: top;
+}
+
+th {
+	background: var(--site-bg-color);
+}
+
+@media (max-width: 760px) {
+	main {
+		padding: 1rem 0.7rem 2rem;
+	}
+}
+
+/* Collector repo-specific additions aligned to contributor patterns */
+
+.link-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+	gap: 0.65rem;
+	margin-top: 0.85rem;
+}
+
+.link-card {
+	display: block;
+	padding: 0.75rem;
+	border: 1px solid var(--site-border-color);
+	border-radius: var(--site-radius-small);
+	background: #f8fafc;
+	text-decoration: none;
+	color: var(--site-text-color);
+}
+
+.link-card:hover,
+.link-card:focus-visible {
+	border-color: #7dd3fc;
+	outline: none;
+}
+
+.chip-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.45rem;
+	margin-top: 0.65rem;
+}
+
+.chip {
+	display: inline-block;
+	padding: 0.2rem 0.5rem;
+	border-radius: 999px;
+	font-size: 0.84rem;
+	border: 1px solid #cbd5e1;
+	background: #f8fafc;
+}
+
+.chip.ok {
+	border-color: #86efac;
+	background: #f0fdf4;
+	color: #166534;
+}
+
+.chip.stub {
+	border-color: #fcd34d;
+	background: #fffbeb;
+	color: #92400e;
+}
+
+.embed-frame {
+	width: 100%;
+	height: min(78vh, 860px);
+	border: 1px solid #cbd5e1;
+	border-radius: var(--site-radius-small);
+	background: #ffffff;
+}
+
+.consumer-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.65rem;
+}
+
+.consumer-toolbar a {
+	text-decoration: none;
+	font-weight: 600;
+}

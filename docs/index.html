@@ -1,67 +1,69 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TimeMap Collector Docs</title>
-    <style>
-      body { font-family: Arial, sans-serif; margin: 2rem; max-width: 960px; line-height: 1.5; }
-      h1, h2 { margin-bottom: 0.35rem; }
-      code { background: #f1f5f9; padding: 0.1rem 0.3rem; border-radius: 4px; }
-      .ok { color: #136c2e; }
-      .stub { color: #8a4b00; }
-    </style>
-  </head>
-  <body>
-    <h1>TimeMap Collector Documentation</h1>
-    <p>
-      TimeMap Collector is a lightweight publication and metadata management component for cultural heritage media.
-      It prepares collection manifests for downstream ingestion by TimeMap Manager.
-    </p>
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>TimeMap Collector Documentation</title>
+		<link rel="stylesheet" href="../index.css" />
+	</head>
+	<body>
+		<div class="site-header">
+			<div class="site-header-inner">
+				<div class="site-brand">TimeMap Collector</div>
+				<nav class="site-nav" aria-label="Primary navigation">
+					<a href="../">Home</a>
+					<a href="./" class="is-active" aria-current="page">Documentation</a>
+					<a href="../demo/">Demo</a>
+				</nav>
+			</div>
+		</div>
+		<main>
+			<header>
+				<h1>TimeMap Collector Documentation</h1>
+				<p>
+					The main UI is now a reusable Shadow DOM Web Component:
+					<code>timemap-collector</code>.
+				</p>
+			</header>
 
-    <h2>MVP Status</h2>
-    <p>
-      The MVP vertical slice is implemented for source connection, card browsing, metadata editing, and manifest export.
-    </p>
+			<section>
+				<h2>1. Embedding</h2>
+				<pre><code>&lt;script type="module" src="/code/apps/collector-ui/src/index.js"&gt;&lt;/script&gt;
+&lt;timemap-collector&gt;&lt;/timemap-collector&gt;</code></pre>
+				<ul>
+					<li>Custom element name: <code>timemap-collector</code></li>
+					<li>Uses Shadow DOM for style and shell encapsulation</li>
+					<li>Main layout: white header, card viewport, metadata sidebar</li>
+				</ul>
+			</section>
 
-    <h2>Repository Structure</h2>
-    <ul>
-      <li><code>code/apps/</code>: app implementations (Collector UI currently at <code>code/apps/collector-ui/</code>)</li>
-      <li><code>code/packages/</code>: schema and provider packages</li>
-      <li><code>examples/</code>: example collections and test data</li>
-      <li><code>demo/</code>: consumer/demo entry page</li>
-      <li><code>docs/</code>: repository documentation pages</li>
-      <li><code>src/</code>: lightweight root entry layer</li>
-      <li><code>projects/</code>: planning and architecture documents</li>
-      <li><code>index.html</code>: root landing page</li>
-    </ul>
+			<section>
+				<h2>2. SaaS Shell Layout</h2>
+				<ul>
+					<li>Header: title + actions for Sources and Manifest dialogs</li>
+					<li>Main viewport: responsive media card grid</li>
+					<li>Right sidebar: metadata editing for selected item</li>
+					<li>Provider and Manifest UIs moved into dialogs</li>
+				</ul>
+			</section>
 
-    <h2>Run the Demo</h2>
-    <ol>
-      <li>Serve the repository root as static files (for example: <code>python -m http.server 8080</code>).</li>
-      <li>Open <a href="../demo/">../demo/</a> or <a href="../code/apps/collector-ui/">../code/apps/collector-ui/</a>.</li>
-      <li>Use provider mode <code>Example dataset</code> with <code>/examples/test-collection/collection.json</code>.</li>
-    </ol>
+			<section>
+				<h2>3. MVP Flow Support</h2>
+				<ul>
+					<li>Source selection and connection</li>
+					<li>Example/local provider flow</li>
+					<li>Public URL provider flow (read-only)</li>
+					<li>Asset browsing and selection</li>
+					<li>Metadata editing and include/exclude state</li>
+					<li>Manifest generate/preview/copy/download</li>
+				</ul>
+			</section>
 
-    <h2>Dataset and Code Locations</h2>
-    <ul>
-      <li>Example dataset: <a href="../examples/test-collection/">../examples/test-collection/</a></li>
-      <li>Collector UI: <a href="../code/apps/collector-ui/">../code/apps/collector-ui/</a></li>
-      <li>Providers: <code>../code/packages/provider-*/</code></li>
-      <li>Schema: <code>../code/packages/collector-schema/</code></li>
-    </ul>
-
-    <h2>Provider Support</h2>
-    <ul>
-      <li><span class="ok">Working:</span> Example dataset/local provider (read/write in-session)</li>
-      <li><span class="ok">Working:</span> Public URL provider (read-only manifest loading)</li>
-      <li><span class="stub">Stubbed:</span> GitHub provider (skeleton only, no auth or repo read/write yet)</li>
-    </ul>
-
-    <h2>Working vs Stubbed</h2>
-    <ul>
-      <li>Working: connection, asset cards, metadata editing, include/exclude, manifest generation/preview/copy/download.</li>
-      <li>Stubbed: full remote writable provider flow (GitHub auth and persistence).</li>
-    </ul>
-  </body>
+			<section>
+				<h2>4. Live Component Instance</h2>
+				<timemap-collector></timemap-collector>
+			</section>
+		</main>
+		<script type="module" src="../code/apps/collector-ui/src/index.js"></script>
+	</body>
 </html>
