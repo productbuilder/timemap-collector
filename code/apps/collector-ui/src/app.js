@@ -5,6 +5,11 @@ import {
 import { createLocalProvider } from '../../../packages/provider-local/src/index.js';
 import { createPublicUrlProvider } from '../../../packages/provider-public-url/src/index.js';
 import { createGithubProvider } from '../../../packages/provider-github/src/index.js';
+import {
+  createGoogleDriveProvider,
+  normalizeGoogleDriveManifestUrl,
+  requestGoogleDriveAccessToken,
+} from '../../../packages/provider-gdrive/src/index.js';
 import { COLLECTOR_CONFIG } from './config.js';
 
 function makeSourceId(providerId) {
@@ -36,25 +41,20 @@ class TimemapCollectorElement extends HTMLElement {
       local: createLocalProvider(),
       'public-url': createPublicUrlProvider(),
       github: createGithubProvider(),
+      gdrive: createGoogleDriveProvider(),
     };
 
     this.providers = {
       local: createLocalProvider,
       'public-url': createPublicUrlProvider,
       github: createGithubProvider,
+      gdrive: createGoogleDriveProvider,
     };
 
     this.providerCatalog = [
       this.providerFactories.github.getDescriptor(),
+      this.providerFactories.gdrive.getDescriptor(),
       this.providerFactories['public-url'].getDescriptor(),
-      {
-        id: 'gdrive',
-        label: 'Google Drive',
-        category: 'external',
-        enabled: false,
-        statusLabel: 'Coming soon',
-        description: 'OAuth-based access to Drive folders and media.',
-      },
       {
         id: 's3',
         label: 'S3-compatible storage',
@@ -588,6 +588,91 @@ class TimemapCollectorElement extends HTMLElement {
           color: #334155;
         }
 
+        .storage-help-btn {
+          margin-top: 0.5rem;
+        }
+
+        .storage-dialog {
+          width: min(1080px, 96vw);
+        }
+
+        .storage-layout {
+          display: grid;
+          gap: 0.8rem;
+        }
+
+        .storage-section {
+          border: 1px solid #dbe3ec;
+          border-radius: 8px;
+          background: #ffffff;
+          padding: 0.75rem;
+          display: grid;
+          gap: 0.45rem;
+        }
+
+        .storage-heading {
+          margin: 0;
+          font-size: 0.9rem;
+          color: #0f172a;
+        }
+
+        .storage-list {
+          margin: 0;
+          padding-left: 1.1rem;
+          display: grid;
+          gap: 0.3rem;
+          color: #334155;
+          font-size: 0.86rem;
+        }
+
+        .storage-table-wrap {
+          overflow: auto;
+          border: 1px solid #dbe3ec;
+          border-radius: 8px;
+          background: #ffffff;
+        }
+
+        .storage-table {
+          width: 100%;
+          min-width: 980px;
+          border-collapse: collapse;
+          font-size: 0.82rem;
+          color: #334155;
+        }
+
+        .storage-table th,
+        .storage-table td {
+          border-bottom: 1px solid #e2e8f0;
+          padding: 0.45rem 0.5rem;
+          text-align: left;
+          vertical-align: top;
+        }
+
+        .storage-table th {
+          background: #f8fafc;
+          color: #0f172a;
+          font-weight: 700;
+          position: sticky;
+          top: 0;
+          z-index: 1;
+        }
+
+        .storage-table tr:last-child td {
+          border-bottom: none;
+        }
+
+        .storage-tag {
+          display: inline-block;
+          padding: 0.08rem 0.38rem;
+          border-radius: 999px;
+          border: 1px solid #bfdbfe;
+          background: #eff6ff;
+          color: #1d4ed8;
+          font-size: 0.72rem;
+          font-weight: 700;
+          white-space: nowrap;
+        }
+
         .is-hidden {
           display: none;
         }
@@ -770,6 +855,7 @@ class TimemapCollectorElement extends HTMLElement {
               <div>
                 <p class="config-section-title">Connected sources</p>
                 <div id="sourceList" class="source-list"></div>
+                <button class="btn storage-help-btn" id="openStorageOptionsBtn" type="button">Storage options</button>
               </div>
               <div class="provider-layout">
                 <div>
@@ -789,6 +875,34 @@ class TimemapCollectorElement extends HTMLElement {
 
                 <div id="publicUrlConfig" class="is-hidden">
                   <div class="field-row"><label for="publicUrlInput">Manifest URL</label><input id="publicUrlInput" type="text" placeholder="https://example.org/collection.json" /></div>
+                </div>
+
+                <div id="gdriveConfig" class="is-hidden">
+                  <div class="field-row">
+                    <label for="gdriveSourceMode">Google Drive source mode</label>
+                    <select id="gdriveSourceMode">
+                      <option value="auth-manifest-file">Authenticated manifest file (Drive API)</option>
+                      <option value="public-manifest-url">Public shared manifest URL</option>
+                    </select>
+                  </div>
+
+                  <div id="gdriveAuthConfig">
+                    <p class="panel-subtext">Connect your Google account to access Drive files.</p>
+                    <p class="panel-subtext">Authenticated Google Drive sources are currently read-only.</p>
+                    <div class="field-row"><label for="gdriveClientIdInput">Google OAuth Client ID</label><input id="gdriveClientIdInput" type="text" placeholder="YOUR_CLIENT_ID.apps.googleusercontent.com" /></div>
+                    <div class="field-row"><label for="gdriveFileIdInput">Drive file ID (collection.json)</label><input id="gdriveFileIdInput" type="text" placeholder="1diFAVD17-_b7O22fYRLqB7dqWv0cgWNi" /></div>
+                    <div class="dialog-actions">
+                      <button class="btn" id="gdriveConnectAuthBtn" type="button">Connect Google Drive</button>
+                    </div>
+                    <div class="field-row"><label for="gdriveAccessTokenInput">Access token (session only, optional override)</label><input id="gdriveAccessTokenInput" type="password" placeholder="Automatically filled after Google auth" /></div>
+                    <p id="gdriveAuthStatus" class="panel-subtext">Disconnected.</p>
+                  </div>
+
+                  <div id="gdrivePublicConfig" class="is-hidden">
+                    <div class="field-row"><label for="gdriveUrlInput">Google Drive shared file URL</label><input id="gdriveUrlInput" type="text" placeholder="https://drive.google.com/file/d/FILE_ID/view" /></div>
+                    <p class="panel-subtext">Paste a public Google Drive file link to a shared <code>collection.json</code> manifest.</p>
+                    <p class="panel-subtext">The file must be shared as Anyone with the link -> Viewer.</p>
+                  </div>
                 </div>
 
                 <div id="localConfig" class="is-hidden">
@@ -831,6 +945,148 @@ class TimemapCollectorElement extends HTMLElement {
         </div>
       </dialog>
 
+      <dialog id="storageOptionsDialog" class="storage-dialog" aria-label="Storage options guidance">
+        <div class="dialog-shell">
+          <div class="dialog-header">
+            <h2 class="dialog-title">Storage options</h2>
+            <button class="btn" data-close="storageOptionsDialog" type="button">Close</button>
+          </div>
+          <div class="dialog-body storage-layout">
+            <section class="storage-section">
+              <h3 class="storage-heading">Recommended options for open hosting</h3>
+              <ul class="storage-list">
+                <li><strong>GitHub</strong>: strong for public manifests, versioning, and easy Collector integration.</li>
+                <li><strong>Cloudflare Pages / R2</strong>: excellent static/browser delivery for JSON + media.</li>
+                <li><strong>S3-compatible storage</strong>: robust long-term hosting for technical teams and institutions.</li>
+                <li><strong>Static website hosting</strong>: simple and dependable for open `collection.json` publishing.</li>
+              </ul>
+            </section>
+
+            <section class="storage-section">
+              <h3 class="storage-heading">Provider comparison</h3>
+              <div class="storage-table-wrap">
+                <table class="storage-table" aria-label="Storage provider comparison">
+                  <thead>
+                    <tr>
+                      <th>Provider</th>
+                      <th>Best use</th>
+                      <th>Public hosting quality</th>
+                      <th>Browser fetch compatibility</th>
+                      <th>Good for media</th>
+                      <th>Good for manifests</th>
+                      <th>Recommended role</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>GitHub <span class="storage-tag">Recommended</span></td>
+                      <td>Open manifests, transparent version history</td>
+                      <td>High</td>
+                      <td>High</td>
+                      <td>Medium</td>
+                      <td>High</td>
+                      <td>Primary hosting</td>
+                    </tr>
+                    <tr>
+                      <td>Cloudflare Pages / R2 <span class="storage-tag">Recommended</span></td>
+                      <td>Public static delivery and scalable media hosting</td>
+                      <td>High</td>
+                      <td>High</td>
+                      <td>High</td>
+                      <td>High</td>
+                      <td>Primary hosting</td>
+                    </tr>
+                    <tr>
+                      <td>S3-compatible storage <span class="storage-tag">Recommended</span></td>
+                      <td>Institutional and technical storage workflows</td>
+                      <td>High</td>
+                      <td>High</td>
+                      <td>High</td>
+                      <td>High</td>
+                      <td>Primary hosting</td>
+                    </tr>
+                    <tr>
+                      <td>Static website hosting <span class="storage-tag">Recommended</span></td>
+                      <td>Simple public hosting for JSON and media files</td>
+                      <td>High</td>
+                      <td>High</td>
+                      <td>Medium</td>
+                      <td>High</td>
+                      <td>Primary hosting</td>
+                    </tr>
+                    <tr>
+                      <td>Google Drive</td>
+                      <td>Collaboration and import source for existing files</td>
+                      <td>Medium</td>
+                      <td>Medium</td>
+                      <td>Medium</td>
+                      <td>Medium</td>
+                      <td>Good source</td>
+                    </tr>
+                    <tr>
+                      <td>OneDrive</td>
+                      <td>Internal collaboration and source ingestion</td>
+                      <td>Medium</td>
+                      <td>Medium</td>
+                      <td>Medium</td>
+                      <td>Medium</td>
+                      <td>Good source</td>
+                    </tr>
+                    <tr>
+                      <td>Dropbox</td>
+                      <td>Team file sharing and temporary data exchange</td>
+                      <td>Low to medium</td>
+                      <td>Medium</td>
+                      <td>Medium</td>
+                      <td>Medium</td>
+                      <td>Import only</td>
+                    </tr>
+                    <tr>
+                      <td>Internet Archive</td>
+                      <td>Long-term public archival distribution</td>
+                      <td>High</td>
+                      <td>Medium</td>
+                      <td>High</td>
+                      <td>Medium</td>
+                      <td>Specialized archive</td>
+                    </tr>
+                    <tr>
+                      <td>Wikimedia Commons</td>
+                      <td>Open media publication under supported licenses</td>
+                      <td>High</td>
+                      <td>Medium</td>
+                      <td>High</td>
+                      <td>Low to medium</td>
+                      <td>Specialized archive</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section class="storage-section">
+              <h3 class="storage-heading">Cloud drives in browser-first workflows</h3>
+              <p class="panel-subtext">Google Drive, OneDrive, and Dropbox are useful source systems, but they are usually weaker as final public hosting for browser-first manifest delivery.</p>
+              <p class="panel-subtext">Use them for collaboration/import, then publish to GitHub, Cloudflare, S3-compatible storage, or static hosting for stable public access.</p>
+            </section>
+
+            <section class="storage-section">
+              <h3 class="storage-heading">Quick recommendations by scenario</h3>
+              <ul class="storage-list">
+                <li><strong>Small heritage organizations</strong> -> GitHub</li>
+                <li><strong>Technical teams or institutions</strong> -> S3-compatible storage or Cloudflare R2</li>
+                <li><strong>Files already in Google Drive or OneDrive</strong> -> import from drive, then publish to stronger public hosting</li>
+                <li><strong>Archival public preservation</strong> -> Internet Archive or Wikimedia Commons where appropriate</li>
+              </ul>
+            </section>
+
+            <p class="panel-subtext">
+              Learn more: <a href="/docs/storage-options">/docs/storage-options</a> (placeholder; full guide TBD).
+            </p>
+          </div>
+        </div>
+      </dialog>
+
       <dialog id="assetViewerDialog" class="viewer-dialog" aria-label="Asset viewer">
         <div class="dialog-shell">
           <div class="dialog-header">
@@ -859,6 +1115,7 @@ class TimemapCollectorElement extends HTMLElement {
       openProviderBtn: root.getElementById('openProviderBtn'),
       openManifestBtn: root.getElementById('openManifestBtn'),
       providerDialog: root.getElementById('providerDialog'),
+      storageOptionsDialog: root.getElementById('storageOptionsDialog'),
       manifestDialog: root.getElementById('manifestDialog'),
       assetViewerDialog: root.getElementById('assetViewerDialog'),
       closeViewerBtn: root.getElementById('closeViewerBtn'),
@@ -869,6 +1126,7 @@ class TimemapCollectorElement extends HTMLElement {
       viewerOpenOriginal: root.getElementById('viewerOpenOriginal'),
       providerCatalog: root.getElementById('providerCatalog'),
       sourceList: root.getElementById('sourceList'),
+      openStorageOptionsBtn: root.getElementById('openStorageOptionsBtn'),
       sourceFilter: root.getElementById('sourceFilter'),
       providerConfigTitle: root.getElementById('providerConfigTitle'),
       githubConfig: root.getElementById('githubConfig'),
@@ -879,6 +1137,16 @@ class TimemapCollectorElement extends HTMLElement {
       githubPath: root.getElementById('githubPath'),
       publicUrlConfig: root.getElementById('publicUrlConfig'),
       publicUrlInput: root.getElementById('publicUrlInput'),
+      gdriveConfig: root.getElementById('gdriveConfig'),
+      gdriveSourceMode: root.getElementById('gdriveSourceMode'),
+      gdriveAuthConfig: root.getElementById('gdriveAuthConfig'),
+      gdrivePublicConfig: root.getElementById('gdrivePublicConfig'),
+      gdriveUrlInput: root.getElementById('gdriveUrlInput'),
+      gdriveClientIdInput: root.getElementById('gdriveClientIdInput'),
+      gdriveFileIdInput: root.getElementById('gdriveFileIdInput'),
+      gdriveConnectAuthBtn: root.getElementById('gdriveConnectAuthBtn'),
+      gdriveAccessTokenInput: root.getElementById('gdriveAccessTokenInput'),
+      gdriveAuthStatus: root.getElementById('gdriveAuthStatus'),
       localConfig: root.getElementById('localConfig'),
       localPathInput: root.getElementById('localPathInput'),
       placeholderConfig: root.getElementById('placeholderConfig'),
@@ -912,6 +1180,7 @@ class TimemapCollectorElement extends HTMLElement {
     };
 
     this.dom.localPathInput.value = COLLECTOR_CONFIG.defaultLocalManifestPath;
+    this.dom.gdriveClientIdInput.value = COLLECTOR_CONFIG.googleDriveOAuth?.clientId || '';
     this.dom.collectionId.value = COLLECTOR_CONFIG.defaultCollectionMeta.id;
     this.dom.collectionTitle.value = COLLECTOR_CONFIG.defaultCollectionMeta.title;
     this.dom.collectionDescription.value = COLLECTOR_CONFIG.defaultCollectionMeta.description;
@@ -926,6 +1195,7 @@ class TimemapCollectorElement extends HTMLElement {
     this._eventsBound = true;
 
     this.dom.openProviderBtn.addEventListener('click', () => this.openDialog(this.dom.providerDialog));
+    this.dom.openStorageOptionsBtn.addEventListener('click', () => this.openDialog(this.dom.storageOptionsDialog));
     this.dom.openManifestBtn.addEventListener('click', () => this.openDialog(this.dom.manifestDialog));
     this.dom.closeViewerBtn.addEventListener('click', () => this.closeViewer());
     this.dom.assetViewerDialog.addEventListener('close', () => {
@@ -953,6 +1223,14 @@ class TimemapCollectorElement extends HTMLElement {
 
     this.dom.connectBtn.addEventListener('click', async () => {
       await this.connectCurrentProvider();
+    });
+
+    this.dom.gdriveSourceMode.addEventListener('change', () => {
+      this.renderGoogleDriveMode();
+    });
+
+    this.dom.gdriveConnectAuthBtn.addEventListener('click', async () => {
+      await this.connectGoogleDriveAuth();
     });
 
     this.dom.saveItemBtn.addEventListener('click', async () => {
@@ -1062,11 +1340,15 @@ class TimemapCollectorElement extends HTMLElement {
     this.dom.providerConfigTitle.textContent = `${selected.label} source configuration`;
     this.dom.githubConfig.classList.add('is-hidden');
     this.dom.publicUrlConfig.classList.add('is-hidden');
+    this.dom.gdriveConfig.classList.add('is-hidden');
     this.dom.localConfig.classList.add('is-hidden');
     this.dom.placeholderConfig.classList.add('is-hidden');
 
     if (providerId === 'github') {
       this.dom.githubConfig.classList.remove('is-hidden');
+    } else if (providerId === 'gdrive') {
+      this.dom.gdriveConfig.classList.remove('is-hidden');
+      this.renderGoogleDriveMode();
     } else if (providerId === 'public-url') {
       this.dom.publicUrlConfig.classList.remove('is-hidden');
     } else if (providerId === 'local') {
@@ -1077,6 +1359,73 @@ class TimemapCollectorElement extends HTMLElement {
 
     this.dom.connectBtn.disabled = selected.enabled === false;
     this.renderCapabilities(this.providerFactories[providerId]?.getCapabilities?.() || selected.capabilities || {});
+  }
+
+  renderGoogleDriveMode() {
+    const mode = this.dom.gdriveSourceMode.value || 'auth-manifest-file';
+    const isAuthMode = mode === 'auth-manifest-file';
+    this.dom.gdriveAuthConfig.classList.toggle('is-hidden', !isAuthMode);
+    this.dom.gdrivePublicConfig.classList.toggle('is-hidden', isAuthMode);
+    if (isAuthMode) {
+      if (!this.dom.gdriveAuthStatus.textContent.trim()) {
+        this.dom.gdriveAuthStatus.textContent = 'Disconnected.';
+      }
+    } else {
+      this.dom.gdriveAuthStatus.textContent = 'Public shared URL mode selected.';
+      this.dom.gdriveAccessTokenInput.value = '';
+    }
+
+    if (this.state.selectedProviderId === 'gdrive') {
+      this.renderCapabilities({
+        canListAssets: true,
+        canGetAsset: true,
+        canSaveMetadata: false,
+        canExportCollection: true,
+        authRequired: isAuthMode,
+      });
+    }
+  }
+
+  setGoogleDriveAuthStatus(text, tone = 'neutral') {
+    const colors = {
+      neutral: '#64748b',
+      ok: '#166534',
+      warn: '#9a3412',
+    };
+    this.dom.gdriveAuthStatus.textContent = text;
+    this.dom.gdriveAuthStatus.style.color = colors[tone] || colors.neutral;
+  }
+
+  async connectGoogleDriveAuth() {
+    const sourceMode = this.dom.gdriveSourceMode.value || 'auth-manifest-file';
+    if (sourceMode !== 'auth-manifest-file') {
+      this.setGoogleDriveAuthStatus('Switch to authenticated mode to connect Google Drive.', 'warn');
+      return;
+    }
+
+    const clientId = this.dom.gdriveClientIdInput.value.trim();
+    if (!clientId) {
+      this.setGoogleDriveAuthStatus('Enter a Google OAuth Client ID to start authentication.', 'warn');
+      return;
+    }
+
+    this.setGoogleDriveAuthStatus('Connecting to Google Drive...', 'neutral');
+
+    try {
+      const tokenResult = await requestGoogleDriveAccessToken({
+        clientId,
+        scope: COLLECTOR_CONFIG.googleDriveOAuth?.scope || 'https://www.googleapis.com/auth/drive.readonly',
+      });
+
+      this.dom.gdriveAccessTokenInput.value = tokenResult.accessToken || '';
+      this.setGoogleDriveAuthStatus('Connected. Access token is loaded for this session.', 'ok');
+      this.setConnectionStatus('Google Drive authentication completed for this session.', 'ok');
+      this.setStatus('Google Drive authenticated. Add source to load the selected manifest file.', 'ok');
+    } catch (error) {
+      this.setGoogleDriveAuthStatus(error.message, 'warn');
+      this.setConnectionStatus(`Google Drive auth failed: ${error.message}`, 'warn');
+      this.setStatus(`Google Drive auth failed: ${error.message}`, 'warn');
+    }
   }
 
   setStatus(text, tone = 'neutral') {
@@ -1186,7 +1535,15 @@ class TimemapCollectorElement extends HTMLElement {
       readBadge.textContent = source.capabilities?.canSaveMetadata ? 'Read + Write' : 'Read';
       const authBadge = document.createElement('span');
       authBadge.className = 'badge';
-      authBadge.textContent = source.needsCredentials ? 'Token required' : source.authMode === 'token' ? 'Token auth' : 'Public';
+      if (source.needsCredentials) {
+        authBadge.textContent = source.providerId === 'gdrive' ? 'Re-auth required' : 'Token required';
+      } else if (source.authMode === 'google-auth') {
+        authBadge.textContent = 'Google auth';
+      } else if (source.authMode === 'token') {
+        authBadge.textContent = 'Token auth';
+      } else {
+        authBadge.textContent = 'Public';
+      }
       badges.append(readBadge, authBadge);
 
       top.append(labelBlock, badges);
@@ -1262,6 +1619,15 @@ class TimemapCollectorElement extends HTMLElement {
       config.manifestUrl = this.dom.publicUrlInput.value.trim();
     }
 
+    if (providerId === 'gdrive') {
+      config.sourceMode = this.dom.gdriveSourceMode.value || 'auth-manifest-file';
+      config.manifestUrl = this.dom.gdriveUrlInput.value.trim();
+      config.fileId = this.dom.gdriveFileIdInput.value.trim();
+      config.accessToken = this.dom.gdriveAccessTokenInput.value.trim();
+      config.oauthClientId = this.dom.gdriveClientIdInput.value.trim();
+      config.oauthScopes = COLLECTOR_CONFIG.googleDriveOAuth?.scope || 'https://www.googleapis.com/auth/drive.readonly';
+    }
+
     if (providerId === 'github') {
       config.token = this.dom.githubToken.value;
       config.owner = this.dom.githubOwner.value;
@@ -1304,6 +1670,17 @@ class TimemapCollectorElement extends HTMLElement {
       }
     }
 
+    if (providerId === 'gdrive') {
+      const manifestTitle = (config._manifestTitle || '').trim();
+      if (manifestTitle) {
+        return manifestTitle;
+      }
+      if ((config.sourceMode || '') === 'auth-manifest-file') {
+        return 'Google Drive (Auth)';
+      }
+      return 'Google Drive';
+    }
+
     if (providerId === 'local') {
       return 'Example dataset';
     }
@@ -1326,6 +1703,15 @@ class TimemapCollectorElement extends HTMLElement {
       return (config.manifestUrl || '').trim() || 'Public URL manifest';
     }
 
+    if (providerId === 'gdrive') {
+      const fileId = (config._normalizedFileId || config.fileId || '').trim();
+      const mode = (config.sourceMode || '').trim() || 'public-manifest-url';
+      if (fileId) {
+        return mode === 'auth-manifest-file' ? `Google Drive API file ${fileId}` : `Google Drive file ${fileId}`;
+      }
+      return mode === 'auth-manifest-file' ? 'Google Drive API manifest' : 'Google Drive manifest';
+    }
+
     if (providerId === 'local') {
       return (config.path || '').trim() || 'Example dataset';
     }
@@ -1346,6 +1732,15 @@ class TimemapCollectorElement extends HTMLElement {
     if (providerId === 'public-url') {
       return {
         manifestUrl: (config.manifestUrl || '').trim(),
+      };
+    }
+
+    if (providerId === 'gdrive') {
+      return {
+        sourceMode: (config.sourceMode || 'public-manifest-url').trim() || 'public-manifest-url',
+        manifestUrl: (config.manifestUrl || '').trim(),
+        fileId: (config.fileId || '').trim(),
+        oauthClientId: (config.oauthClientId || '').trim(),
       };
     }
 
@@ -1407,15 +1802,25 @@ class TimemapCollectorElement extends HTMLElement {
         label: entry.detailLabel || entry.label || entry.displayLabel || 'Source',
         config: this.sanitizeSourceConfig(entry.providerId, entry.config || {}),
         capabilities: entry.capabilities || this.providerFactories[entry.providerId]?.getCapabilities?.() || {},
-        status:
+        status: (() => {
+          if (entry.providerId === 'github') {
+            return 'Remembered source. Token is not stored; re-enter token if repository requires it.';
+          }
+          if (entry.providerId === 'gdrive' && entry.config?.sourceMode === 'auth-manifest-file') {
+            return 'Remembered source. Google access token is session-only; reconnect authentication before refresh.';
+          }
+          return 'Remembered source. Click Refresh to reconnect.';
+        })(),
+        authMode:
           entry.providerId === 'github'
-            ? 'Remembered source. Token is not stored; re-enter token if repository requires it.'
-            : 'Remembered source. Click Refresh to reconnect.',
-        authMode: entry.providerId === 'github' ? 'token' : entry.authMode || 'public',
+            ? 'token'
+            : entry.providerId === 'gdrive' && entry.config?.sourceMode === 'auth-manifest-file'
+              ? 'google-auth'
+              : entry.authMode || 'public',
         itemCount: Number(entry.itemCount) || 0,
         provider: null,
         needsReconnect: true,
-        needsCredentials: entry.providerId === 'github',
+        needsCredentials: entry.providerId === 'github' || (entry.providerId === 'gdrive' && entry.config?.sourceMode === 'auth-manifest-file'),
       }));
 
     this.state.sources = restored;
@@ -1431,8 +1836,11 @@ class TimemapCollectorElement extends HTMLElement {
     this.renderEditor();
 
     for (const source of restored) {
-      if (source.providerId !== 'github') {
-        // Public URL and local sources can reconnect without secrets.
+      if (
+        source.providerId !== 'github' &&
+        !(source.providerId === 'gdrive' && source.config?.sourceMode === 'auth-manifest-file')
+      ) {
+        // Non-secret sources can reconnect automatically.
         await this.refreshSource(source.id);
       }
     }
@@ -1846,6 +2254,15 @@ class TimemapCollectorElement extends HTMLElement {
     const provider = providerFactory();
     const config = this.collectCurrentProviderConfig(providerId);
 
+    if (providerId === 'gdrive' && config.sourceMode === 'public-manifest-url' && config.manifestUrl) {
+      const normalized = normalizeGoogleDriveManifestUrl(config.manifestUrl);
+      if (!normalized.ok) {
+        this.setConnectionStatus(normalized.message || 'Invalid Google Drive file URL.', false);
+        this.setStatus(normalized.message || 'Invalid Google Drive file URL.', 'warn');
+        return;
+      }
+    }
+
     try {
       const result = await provider.connect(config);
       this.renderCapabilities(provider);
@@ -1861,8 +2278,18 @@ class TimemapCollectorElement extends HTMLElement {
       this.setConnectionStatus(result.message, true);
 
       const loaded = await provider.listAssets();
-      const displayLabel = this.sourceDisplayLabelFor(providerId, config, selectedProvider?.label || providerId);
-      const detailLabel = this.sourceDetailLabelFor(providerId, config, selectedProvider?.label || providerId);
+      const derivedConfig = { ...config };
+      if (providerId === 'gdrive') {
+        derivedConfig._manifestTitle = result.sourceDisplayLabel || '';
+        derivedConfig._normalizedFileId = result.fileId || '';
+        derivedConfig._normalizedManifestUrl = result.normalizedManifestUrl || '';
+      }
+      const displayLabel =
+        result.sourceDisplayLabel ||
+        this.sourceDisplayLabelFor(providerId, derivedConfig, selectedProvider?.label || providerId);
+      const detailLabel =
+        result.sourceDetailLabel ||
+        this.sourceDetailLabelFor(providerId, derivedConfig, selectedProvider?.label || providerId);
       const source = {
         id: makeSourceId(providerId),
         providerId,
@@ -1870,14 +2297,21 @@ class TimemapCollectorElement extends HTMLElement {
         label: detailLabel,
         displayLabel,
         detailLabel,
-        config: { ...config },
+        config: { ...config, ...(providerId === 'gdrive' ? { fileId: result.fileId || '' } : {}) },
         capabilities: provider.getCapabilities(),
         status: result.message,
-        authMode: providerId === 'github' && (config.token || '').trim() ? 'token' : 'public',
+        authMode:
+          providerId === 'github'
+            ? (config.token || '').trim()
+              ? 'token'
+              : 'public'
+            : providerId === 'gdrive' && config.sourceMode === 'auth-manifest-file'
+              ? 'google-auth'
+              : 'public',
         itemCount: loaded.length,
         provider,
         needsReconnect: false,
-        needsCredentials: false,
+        needsCredentials: providerId === 'gdrive' && config.sourceMode === 'auth-manifest-file' ? !(config.accessToken || '').trim() : false,
       };
 
       const normalized = this.normalizeSourceAssets(source, loaded);
@@ -1919,6 +2353,20 @@ class TimemapCollectorElement extends HTMLElement {
     if (source.providerId === 'public-url') {
       this.dom.publicUrlInput.value = source.config.manifestUrl || '';
     }
+    if (source.providerId === 'gdrive') {
+      this.dom.gdriveSourceMode.value = source.config.sourceMode || 'public-manifest-url';
+      this.dom.gdriveUrlInput.value = source.config.manifestUrl || '';
+      this.dom.gdriveFileIdInput.value = source.config.fileId || '';
+      this.dom.gdriveClientIdInput.value = source.config.oauthClientId || COLLECTOR_CONFIG.googleDriveOAuth?.clientId || '';
+      this.dom.gdriveAccessTokenInput.value = '';
+      this.renderGoogleDriveMode();
+      this.setGoogleDriveAuthStatus(
+        source.config.sourceMode === 'auth-manifest-file'
+          ? 'Re-authentication required before refresh.'
+          : 'Public shared URL mode selected.',
+        source.config.sourceMode === 'auth-manifest-file' ? 'warn' : 'neutral',
+      );
+    }
     if (source.providerId === 'local') {
       this.dom.localPathInput.value = source.config.path || COLLECTOR_CONFIG.defaultLocalManifestPath;
     }
@@ -1946,7 +2394,9 @@ class TimemapCollectorElement extends HTMLElement {
           ...source,
           status: result.message,
           needsReconnect: true,
-          needsCredentials: source.providerId === 'github',
+          needsCredentials:
+            source.providerId === 'github' ||
+            (source.providerId === 'gdrive' && source.config?.sourceMode === 'auth-manifest-file'),
         };
         this.state.sources = this.state.sources.map((entry) => (entry.id === sourceId ? next : entry));
         this.renderSourcesList();
@@ -1957,17 +2407,37 @@ class TimemapCollectorElement extends HTMLElement {
       }
 
       const loaded = await provider.listAssets();
-      const displayLabel = this.sourceDisplayLabelFor(source.providerId, source.config || {}, source.providerLabel);
-      const detailLabel = this.sourceDetailLabelFor(source.providerId, source.config || {}, source.providerLabel);
+      const refreshedConfig = { ...(source.config || {}) };
+      if (source.providerId === 'gdrive') {
+        refreshedConfig._manifestTitle = result.sourceDisplayLabel || source.displayLabel || '';
+        refreshedConfig._normalizedFileId = result.fileId || source.config?.fileId || '';
+        refreshedConfig._normalizedManifestUrl = result.normalizedManifestUrl || '';
+      }
+      const displayLabel =
+        result.sourceDisplayLabel || this.sourceDisplayLabelFor(source.providerId, refreshedConfig, source.providerLabel);
+      const detailLabel =
+        result.sourceDetailLabel || this.sourceDetailLabelFor(source.providerId, refreshedConfig, source.providerLabel);
       const updatedSource = {
         ...source,
         provider,
         capabilities: provider.getCapabilities(),
         itemCount: loaded.length,
         status: result.message,
+        authMode:
+          source.providerId === 'gdrive' && source.config?.sourceMode === 'auth-manifest-file'
+            ? 'google-auth'
+            : source.authMode,
         displayLabel,
         detailLabel,
         label: detailLabel,
+        config:
+          source.providerId === 'gdrive'
+            ? {
+                ...(source.config || {}),
+                fileId: result.fileId || source.config?.fileId || '',
+                sourceMode: source.config?.sourceMode || 'public-manifest-url',
+              }
+            : source.config,
         needsReconnect: false,
         needsCredentials: false,
       };
@@ -1997,7 +2467,9 @@ class TimemapCollectorElement extends HTMLElement {
         ...source,
         status: `Refresh error: ${error.message}`,
         needsReconnect: true,
-        needsCredentials: source.providerId === 'github',
+        needsCredentials:
+          source.providerId === 'github' ||
+          (source.providerId === 'gdrive' && source.config?.sourceMode === 'auth-manifest-file'),
       };
       this.state.sources = this.state.sources.map((entry) => (entry.id === sourceId ? next : entry));
       this.renderSourcesList();

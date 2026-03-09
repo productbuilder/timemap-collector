@@ -24,12 +24,13 @@ It uses Shadow DOM and provides a SaaS-style shell for source management, merged
 ## MVP currently does
 
 - Sources manager dialog with a multi-source roadmap UI
+- In-app storage guidance available from Sources (`Storage options`) with provider comparison
 - Working providers:
   - GitHub (authenticated via Personal Access Token, read + import + manifest export)
+  - Google Drive (public shared `collection.json` file link, read-only)
   - Public URL manifest (working, read-only)
   - Example dataset (working, local)
 - Planned placeholders (disabled in UI):
-  - Google Drive
   - S3-compatible storage
   - Wikimedia Commons
   - Internet Archive
@@ -61,6 +62,27 @@ Implemented:
 
 Not yet implemented:
 - Browser OAuth/GitHub App flow
+
+## Google Drive provider (first pass)
+
+Implemented:
+- Public shared file link import for `collection.json` manifests
+- Accepts common Drive file URL variants (for example `/file/d/<FILE_ID>/view` and `uc?export=download&id=<FILE_ID>`)
+- Normalizes links to direct download URL format (`https://drive.google.com/uc?export=download&id=<FILE_ID>`)
+- Loads inline manifest `items` into the existing merged workspace grid
+- Read-only source behavior (`Read` capability only)
+- Authenticated source scaffold with Google Identity Services token flow (`Connect Google Drive`)
+- Authenticated Drive API read path for manifest by file ID (`drive/v3/files/<FILE_ID>?alt=media`)
+- Session-only token handling (token is not persisted by source-memory storage)
+- Requires a valid Google OAuth Client ID in the source configuration
+
+Required sharing mode:
+- `Anyone with the link` -> `Viewer`
+
+Not yet implemented:
+- Full production OAuth hardening (backend token broker/refresh strategy)
+- Folder browsing / picker UX
+- Write-back / publishing to Drive
 
 ## Run locally
 
