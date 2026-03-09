@@ -331,11 +331,30 @@ export function createGithubProvider() {
 
   function updateCapabilities() {
     const canWrite = Boolean(token && collection && manifestPath && manifestSha && hasWriteAccess);
-    capabilities = canWrite ? READ_WRITE_CAPABILITIES : READ_ONLY_CAPABILITIES;
+    capabilities = canWrite
+      ? {
+          ...READ_WRITE_CAPABILITIES,
+          canUploadAssets: true,
+          canPublishCollection: true,
+        }
+      : {
+          ...READ_ONLY_CAPABILITIES,
+          canUploadAssets: Boolean(token && owner && repo && hasWriteAccess),
+          canPublishCollection: Boolean(token && owner && repo && hasWriteAccess),
+        };
   }
 
   function encodeBase64Utf8(text) {
     const bytes = new TextEncoder().encode(text);
+    let binary = '';
+    for (const byte of bytes) {
+      binary += String.fromCharCode(byte);
+    }
+    return btoa(binary);
+  }
+
+  async function encodeBase64Blob(blob) {
+    const bytes = new Uint8Array(await blob.arrayBuffer());
     let binary = '';
     for (const byte of bytes) {
       binary += String.fromCharCode(byte);
@@ -426,7 +445,10 @@ export function createGithubProvider() {
         } else {
           collection = null;
           items = await listMediaFilesRecursive(contentPath);
-          resetManifestContext();
+          manifestPath = manifestResult.manifestPath;
+          manifestSha = '';
+          manifestRootPath = contentPath;
+          hasWriteAccess = await detectWriteAccess();
         }
 
         connected = true;
@@ -532,6 +554,92 @@ export function createGithubProvider() {
         title: collectionMeta.title,
         description: collectionMeta.description,
         items: items.map(cloneItem),
+      };
+    },
+
+    async publishCollection(payload = {}) {
+      if (!connected) {
+        throw providerNotConnectedError('github');
+      }
+
+      if (!token || !owner || !repo) {
+        throw new Error('Publish failed: connect GitHub with token, owner, and repository.');
+      }
+
+      if (!hasWriteAccess) {
+        throw new Error('Publish failed: token does not have write access to this repository.');
+      }
+
+      const manifest = payload.manifest;
+      if (!manifest || typeof manifest !== 'object' || !Array.isArray(manifest.items)) {
+        throw new Error('Publish failed: manifest payload is invalid.');
+      }
+
+      const validationErrors = validateCollectionShape(manifest);
+      if (validationErrors.length > 0) {
+        throw new Error(`Publish failed: manifest validation errors: ${validationErrors.join(' ')}`);
+      }
+
+      const uploads = Array.isArray(payload.uploads) ? payload.uploads : [];
+      const uploadResults = [];
+      for (const entry of uploads) {
+        const path = asApiPath(entry?.path || '');
+        const blob = entry?.blob || null;
+        if (!path || !blob) {
+          continue;
+        }
+
+        const existing = await fetchRepoContents(path, { allowNotFound: true });
+        const nextPayload = {
+          message: entry.message || `Upload ${path} via TimeMap Collector`,
+          content: await encodeBase64Blob(blob),
+          branch,
+        };
+        if (existing && !Array.isArray(existing) && existing.type === 'file' && existing.sha) {
+          nextPayload.sha = existing.sha;
+        }
+
+        await putRepoContent(path, nextPayload);
+        uploadResults.push({
+          path,
+          rawUrl: rawUrlForRepoPath(path),
+          blobUrl: blobUrlForRepoPath(path),
+        });
+      }
+
+      const targetManifestPath = manifestPath || joinRepoPath(contentPath, 'collection.json');
+      const existingManifestEntry = await fetchRepoContents(targetManifestPath, { allowNotFound: true });
+      const serialized = `${JSON.stringify(manifest, null, 2)}\n`;
+      const manifestPayload = {
+        message: payload.commitMessage || 'Publish collection via TimeMap Collector',
+        content: encodeBase64Utf8(serialized),
+        branch,
+      };
+      if (
+        existingManifestEntry &&
+        !Array.isArray(existingManifestEntry) &&
+        existingManifestEntry.type === 'file' &&
+        existingManifestEntry.sha
+      ) {
+        manifestPayload.sha = existingManifestEntry.sha;
+      }
+
+      const manifestResponse = await putRepoContent(targetManifestPath, manifestPayload);
+      const nextSha = manifestResponse?.content?.sha || '';
+
+      collection = cloneItem(manifest);
+      manifestPath = targetManifestPath;
+      manifestSha = nextSha;
+      manifestRootPath = contentPath;
+      items = (collection.items || []).map((entry, index) => normalizeManifestItem(entry, index, manifestRootPath));
+      updateCapabilities();
+
+      return {
+        ok: true,
+        manifestPath: targetManifestPath,
+        manifestRawUrl: rawUrlForRepoPath(targetManifestPath),
+        uploaded: uploadResults,
+        itemCount: items.length,
       };
     },
 

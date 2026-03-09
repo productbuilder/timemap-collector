@@ -76,3 +76,9 @@ index.html
 - Implementation code now lives under `src/`.
 - Site-facing content now lives under `site/`.
 - Registration and richer collection discovery are scaffolded, not fully implemented yet.
+- Collector uses OPFS for local draft/workspace persistence when browser support is available.
+- Collector supports image ingestion via drag-and-drop and file picker for local drafts.
+- Collector generates image thumbnails for draft assets when possible.
+- GitHub publish uploads originals (`media/`), thumbnails (`thumbs/`), and updates `collection.json`.
+- Publishing remains provider-backed (GitHub/other storage), separate from OPFS local drafts.
+- Secrets are not stored in OPFS.

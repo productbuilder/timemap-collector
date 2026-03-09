@@ -26,3 +26,11 @@ TimeMap Collector is the writable collection-management app.
 - Built with vanilla JS + Web Components.
 - Browser-local source-memory keeps non-secret config only.
 - Registration is currently a placeholder dialog.
+- OPFS is used for local draft/workspace persistence when available.
+- Draft workflow is explicit: `Save locally`, `Restore draft`, `Discard draft`.
+- Image ingestion supports drag-and-drop and file picker (`jpg`, `jpeg`, `png`, `webp`, `gif`).
+- New images are added immediately as local draft items with upload status badges.
+- Thumbnails are generated automatically for image assets when possible.
+- GitHub publish uploads `media/*`, `thumbs/*.thumb.jpg`, and updates `collection.json`.
+- Publishing remains separate from OPFS and uses storage providers.
+- Secrets (PATs, OAuth tokens, passwords) are never persisted in OPFS.

@@ -11,6 +11,7 @@ import {
   requestGoogleDriveAccessToken,
 } from '../../../packages/provider-gdrive/src/index.js';
 import { COLLECTOR_CONFIG } from './config.js';
+import { createOpfsStorage } from './services/opfs_storage.js';
 
 function makeSourceId(providerId) {
   return `${providerId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -21,6 +22,11 @@ function toWorkspaceItemId(sourceId, itemId) {
 }
 
 const SOURCES_STORAGE_KEY = 'timemap_collector_sources_v1';
+const WORKSPACE_FILE_PATH = 'workspace.json';
+const COLLECTIONS_DIR_PATH = 'collections';
+const SOURCES_DIR_PATH = 'sources';
+const DRAFT_ASSETS_DIR_PATH = 'draft-assets';
+const IMAGE_UPLOAD_ACCEPT = '.jpg,.jpeg,.png,.webp,.gif';
 
 class TimemapCollectorElement extends HTMLElement {
   constructor() {
@@ -36,7 +42,16 @@ class TimemapCollectorElement extends HTMLElement {
       selectedCollectionId: 'all',
       publishDestination: null,
       manifest: null,
+      opfsAvailable: false,
+      opfsStatus: 'Checking local draft storage...',
+      lastLocalSaveAt: '',
+      isDropTargetActive: false,
     };
+
+    this.opfsStorage = createOpfsStorage();
+    this._autosaveTimer = null;
+    this.localAssetBlobs = new Map();
+    this.objectUrls = new Set();
 
     this.providerFactories = {
       local: createLocalProvider(),
@@ -114,7 +129,9 @@ class TimemapCollectorElement extends HTMLElement {
     this.renderSourceFilter();
     this.renderAssets();
     this.renderEditor();
-    this.restoreRememberedSources();
+    this.setLocalDraftStatus('Checking local draft storage...', 'neutral');
+    this.setLocalDraftControlsEnabled(false);
+    this.initializeLocalDraftState();
   }
 
   renderShell() {
@@ -715,6 +732,62 @@ class TimemapCollectorElement extends HTMLElement {
           font-weight: 700;
         }
 
+        .viewport-actions {
+          display: flex;
+          align-items: center;
+          gap: 0.45rem;
+          flex-wrap: wrap;
+        }
+
+        .drop-overlay {
+          position: absolute;
+          inset: 0;
+          border: 2px dashed #0f6cc6;
+          border-radius: 10px;
+          background: rgba(15, 108, 198, 0.08);
+          display: none;
+          align-items: center;
+          justify-content: center;
+          color: #0f4f8a;
+          font-weight: 700;
+          pointer-events: none;
+          z-index: 4;
+        }
+
+        .drop-overlay.is-active {
+          display: flex;
+        }
+
+        .asset-status-local {
+          border-color: #c4b5fd;
+          background: #f5f3ff;
+          color: #5b21b6;
+        }
+
+        .asset-status-pending {
+          border-color: #fcd34d;
+          background: #fffbeb;
+          color: #92400e;
+        }
+
+        .asset-status-uploading {
+          border-color: #93c5fd;
+          background: #eff6ff;
+          color: #1d4ed8;
+        }
+
+        .asset-status-uploaded {
+          border-color: #86efac;
+          background: #ecfdf5;
+          color: #166534;
+        }
+
+        .asset-status-failed {
+          border-color: #fecaca;
+          background: #fef2f2;
+          color: #991b1b;
+        }
+
         .viewer-dialog {
           width: min(980px, 96vw);
         }
@@ -809,6 +882,10 @@ class TimemapCollectorElement extends HTMLElement {
             <div class="panel-header">
               <h2 class="panel-title">Collection viewport</h2>
               <div class="panel-header-meta">
+                <div class="viewport-actions">
+                  <button class="btn" id="addImagesBtn" type="button">Add images</button>
+                  <input id="imageFileInput" type="file" accept="${IMAGE_UPLOAD_ACCEPT}" multiple hidden />
+                </div>
                 <select id="sourceFilter" class="source-filter" aria-label="Filter assets by source">
                   <option value="all">All storage sources</option>
                 </select>
@@ -818,7 +895,8 @@ class TimemapCollectorElement extends HTMLElement {
                 <p id="assetCount" class="panel-subtext">No assets loaded.</p>
               </div>
             </div>
-            <div class="asset-wrap">
+            <div id="assetWrap" class="asset-wrap">
+              <div id="assetDropOverlay" class="drop-overlay">Drop image files to add them to this collection draft</div>
               <div id="assetGrid" class="asset-grid"></div>
             </div>
           </section>
@@ -957,9 +1035,14 @@ class TimemapCollectorElement extends HTMLElement {
             <div class="field-row"><label for="collectionDescription">Collection description</label><textarea id="collectionDescription"></textarea></div>
             <div class="dialog-actions">
               <button class="btn btn-primary" id="generateManifestBtn" type="button">Generate collection.json</button>
+              <button class="btn btn-primary" id="publishToSourceBtn" type="button">Upload to GitHub</button>
               <button class="btn" id="copyManifestBtn" type="button">Copy</button>
               <button class="btn" id="downloadManifestBtn" type="button">Download</button>
+              <button class="btn" id="saveLocalDraftBtn" type="button">Save locally</button>
+              <button class="btn" id="restoreLocalDraftBtn" type="button">Restore draft</button>
+              <button class="btn" id="discardLocalDraftBtn" type="button">Discard draft</button>
             </div>
+            <p id="localDraftStatus" class="panel-subtext">Checking local draft storage...</p>
             <pre id="manifestPreview"></pre>
           </div>
         </div>
@@ -1192,6 +1275,10 @@ class TimemapCollectorElement extends HTMLElement {
       connectionStatus: root.getElementById('connectionStatus'),
       capabilities: root.getElementById('capabilities'),
       assetCount: root.getElementById('assetCount'),
+      addImagesBtn: root.getElementById('addImagesBtn'),
+      imageFileInput: root.getElementById('imageFileInput'),
+      assetWrap: root.getElementById('assetWrap'),
+      assetDropOverlay: root.getElementById('assetDropOverlay'),
       assetGrid: root.getElementById('assetGrid'),
       editorStatus: root.getElementById('editorStatus'),
       editorEmpty: root.getElementById('editorEmpty'),
@@ -1212,8 +1299,13 @@ class TimemapCollectorElement extends HTMLElement {
       collectionTitle: root.getElementById('collectionTitle'),
       collectionDescription: root.getElementById('collectionDescription'),
       generateManifestBtn: root.getElementById('generateManifestBtn'),
+      publishToSourceBtn: root.getElementById('publishToSourceBtn'),
       copyManifestBtn: root.getElementById('copyManifestBtn'),
       downloadManifestBtn: root.getElementById('downloadManifestBtn'),
+      saveLocalDraftBtn: root.getElementById('saveLocalDraftBtn'),
+      restoreLocalDraftBtn: root.getElementById('restoreLocalDraftBtn'),
+      discardLocalDraftBtn: root.getElementById('discardLocalDraftBtn'),
+      localDraftStatus: root.getElementById('localDraftStatus'),
       manifestPreview: root.getElementById('manifestPreview'),
     };
 
@@ -1253,6 +1345,9 @@ class TimemapCollectorElement extends HTMLElement {
       this.renderCollectionFilter();
       this.renderAssets();
       this.renderEditor();
+      if (this.state.opfsAvailable) {
+        this.persistWorkspaceToOpfs().catch(() => {});
+      }
     });
     this.dom.collectionFilter.addEventListener('change', () => {
       this.state.selectedCollectionId = this.dom.collectionFilter.value || 'all';
@@ -1262,6 +1357,9 @@ class TimemapCollectorElement extends HTMLElement {
       }
       this.renderAssets();
       this.renderEditor();
+      if (this.state.opfsAvailable) {
+        this.persistWorkspaceToOpfs().catch(() => {});
+      }
     });
 
     this.shadow.querySelectorAll('[data-close]').forEach((button) => {
@@ -1301,6 +1399,50 @@ class TimemapCollectorElement extends HTMLElement {
 
     this.dom.downloadManifestBtn.addEventListener('click', () => {
       this.downloadManifest();
+    });
+    this.dom.publishToSourceBtn.addEventListener('click', async () => {
+      await this.publishActiveSourceDraft();
+    });
+    this.dom.addImagesBtn.addEventListener('click', () => {
+      this.dom.imageFileInput.click();
+    });
+    this.dom.imageFileInput.addEventListener('change', async (event) => {
+      const files = Array.from(event.target?.files || []);
+      if (files.length > 0) {
+        await this.ingestImageFiles(files);
+      }
+      this.dom.imageFileInput.value = '';
+    });
+    this.dom.assetWrap.addEventListener('dragenter', (event) => {
+      event.preventDefault();
+      this.setDropTargetState(true);
+    });
+    this.dom.assetWrap.addEventListener('dragover', (event) => {
+      event.preventDefault();
+      this.setDropTargetState(true);
+    });
+    this.dom.assetWrap.addEventListener('dragleave', (event) => {
+      event.preventDefault();
+      if (!event.relatedTarget || !this.dom.assetWrap.contains(event.relatedTarget)) {
+        this.setDropTargetState(false);
+      }
+    });
+    this.dom.assetWrap.addEventListener('drop', async (event) => {
+      event.preventDefault();
+      this.setDropTargetState(false);
+      const files = Array.from(event.dataTransfer?.files || []);
+      if (files.length > 0) {
+        await this.ingestImageFiles(files);
+      }
+    });
+    this.dom.saveLocalDraftBtn.addEventListener('click', async () => {
+      await this.saveLocalDraft();
+    });
+    this.dom.restoreLocalDraftBtn.addEventListener('click', async () => {
+      await this.restoreLocalDraft();
+    });
+    this.dom.discardLocalDraftBtn.addEventListener('click', async () => {
+      await this.discardLocalDraft();
     });
   }
 
@@ -1499,6 +1641,390 @@ class TimemapCollectorElement extends HTMLElement {
 
     this.dom.connectionStatus.textContent = text;
     this.dom.connectionStatus.style.color = colors[resolvedTone] || colors.neutral;
+  }
+
+  setLocalDraftStatus(text, tone = 'neutral') {
+    const colors = {
+      neutral: '#64748b',
+      ok: '#166534',
+      warn: '#9a3412',
+    };
+    this.state.opfsStatus = text;
+    if (this.dom?.localDraftStatus) {
+      this.dom.localDraftStatus.textContent = text;
+      this.dom.localDraftStatus.style.color = colors[tone] || colors.neutral;
+    }
+  }
+
+  setLocalDraftControlsEnabled(enabled) {
+    const disabled = !enabled;
+    if (this.dom?.saveLocalDraftBtn) {
+      this.dom.saveLocalDraftBtn.disabled = disabled;
+      this.dom.restoreLocalDraftBtn.disabled = disabled;
+      this.dom.discardLocalDraftBtn.disabled = disabled;
+    }
+  }
+
+  draftCollectionId() {
+    return (
+      this.dom.collectionId.value.trim() ||
+      COLLECTOR_CONFIG.defaultCollectionMeta.id ||
+      'collection-draft'
+    );
+  }
+
+  draftFilePath(collectionId = this.draftCollectionId()) {
+    return `${COLLECTIONS_DIR_PATH}/${collectionId}.json`;
+  }
+
+  sourceFilePath(sourceId) {
+    return `${SOURCES_DIR_PATH}/${sourceId}.json`;
+  }
+
+  setDropTargetState(active) {
+    this.state.isDropTargetActive = Boolean(active);
+    if (this.dom?.assetDropOverlay) {
+      this.dom.assetDropOverlay.classList.toggle('is-active', this.state.isDropTargetActive);
+    }
+  }
+
+  isSupportedImageFile(file) {
+    if (!file) {
+      return false;
+    }
+    const mime = (file.type || '').toLowerCase();
+    if (mime.startsWith('image/jpeg') || mime.startsWith('image/png') || mime.startsWith('image/webp') || mime.startsWith('image/gif')) {
+      return true;
+    }
+    return /\.(jpe?g|png|webp|gif)$/i.test(file.name || '');
+  }
+
+  slugifySegment(value, fallback = 'item') {
+    const slug = String(value || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 64);
+    return slug || fallback;
+  }
+
+  readableTitleFromFilename(name, fallbackId) {
+    const base = String(name || '').replace(/\.[^.]+$/, '');
+    const cleaned = base.replace(/[_-]+/g, ' ').trim();
+    return cleaned || fallbackId;
+  }
+
+  extensionFromName(name = '', fallback = '.jpg') {
+    const match = String(name).toLowerCase().match(/\.[a-z0-9]+$/);
+    return match ? match[0] : fallback;
+  }
+
+  uniqueDraftItemId(base, sourceId, collectionId) {
+    const existing = new Set(
+      this.state.assets
+        .filter((item) => item.sourceId === sourceId && item.collectionId === collectionId)
+        .map((item) => item.id),
+    );
+    if (!existing.has(base)) {
+      return base;
+    }
+    let index = 2;
+    while (existing.has(`${base}-${index}`)) {
+      index += 1;
+    }
+    return `${base}-${index}`;
+  }
+
+  getActiveIngestionSource() {
+    if (!this.state.sources.length) {
+      this.setStatus('Connect a writable storage source before adding images.', 'warn');
+      return null;
+    }
+
+    if (this.state.activeSourceFilter === 'all') {
+      this.setStatus('Select a specific storage source before adding images.', 'warn');
+      return null;
+    }
+
+    const source = this.getSourceById(this.state.activeSourceFilter);
+    if (!source) {
+      this.setStatus('Selected storage source was not found.', 'warn');
+      return null;
+    }
+
+    if (source.providerId !== 'github') {
+      this.setStatus('Image upload publishing is currently implemented for GitHub sources only.', 'warn');
+      return null;
+    }
+
+    if (source.needsReconnect || source.needsCredentials) {
+      this.setStatus('Reconnect the selected GitHub source before adding local draft assets.', 'warn');
+      return null;
+    }
+
+    return source;
+  }
+
+  ensureCollectionForSource(source) {
+    const preferred = (this.state.selectedCollectionId || '').trim();
+    const existing = source.collections || [];
+    if (preferred && preferred !== 'all' && existing.some((entry) => entry.id === preferred)) {
+      source.selectedCollectionId = preferred;
+      return preferred;
+    }
+
+    if (source.selectedCollectionId && existing.some((entry) => entry.id === source.selectedCollectionId)) {
+      return source.selectedCollectionId;
+    }
+
+    const first = existing[0]?.id;
+    if (first) {
+      source.selectedCollectionId = first;
+      return first;
+    }
+
+    const fallback = `${source.id}::default-collection`;
+    source.collections = [{ id: fallback, title: source.displayLabel || source.label || 'Default collection' }];
+    source.selectedCollectionId = fallback;
+    return fallback;
+  }
+
+  collectionLabelFor(source, collectionId) {
+    const found = (source.collections || []).find((entry) => entry.id === collectionId);
+    return found?.title || collectionId;
+  }
+
+  collectionAssetPath(workspaceId, kind = 'original', extension = '.jpg') {
+    return `${DRAFT_ASSETS_DIR_PATH}/${workspaceId}/${kind}${extension}`;
+  }
+
+  registerObjectUrl(url) {
+    if (url) {
+      this.objectUrls.add(url);
+    }
+  }
+
+  async generateThumbnailBlob(file) {
+    const bitmap = await createImageBitmap(file);
+    const maxWidth = 300;
+    const ratio = bitmap.width > 0 ? Math.min(1, maxWidth / bitmap.width) : 1;
+    const width = Math.max(1, Math.round(bitmap.width * ratio));
+    const height = Math.max(1, Math.round(bitmap.height * ratio));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d', { alpha: false });
+    if (!ctx) {
+      if (typeof bitmap.close === 'function') {
+        bitmap.close();
+      }
+      return null;
+    }
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    if (typeof bitmap.close === 'function') {
+      bitmap.close();
+    }
+    const blob = await new Promise((resolve) => {
+      canvas.toBlob((value) => resolve(value), 'image/jpeg', 0.86);
+    });
+    return blob || null;
+  }
+
+  async rememberLocalAssetFiles(item, originalBlob, thumbnailBlob) {
+    this.localAssetBlobs.set(item.workspaceId, {
+      original: originalBlob || null,
+      thumbnail: thumbnailBlob || null,
+    });
+
+    if (!this.state.opfsAvailable) {
+      return;
+    }
+
+    if (originalBlob && item.localFileRef) {
+      await this.opfsStorage.writeBlobFile(item.localFileRef, originalBlob);
+    }
+    if (thumbnailBlob && item.localThumbnailRef) {
+      await this.opfsStorage.writeBlobFile(item.localThumbnailRef, thumbnailBlob);
+    }
+  }
+
+  async loadLocalAssetBlob(item, kind = 'original') {
+    const cached = this.localAssetBlobs.get(item.workspaceId);
+    if (kind === 'thumbnail' && cached?.thumbnail) {
+      return cached.thumbnail;
+    }
+    if (kind === 'original' && cached?.original) {
+      return cached.original;
+    }
+
+    if (!this.state.opfsAvailable) {
+      return null;
+    }
+
+    const path = kind === 'thumbnail' ? item.localThumbnailRef : item.localFileRef;
+    if (!path) {
+      return null;
+    }
+    const blob = await this.opfsStorage.readBlobFile(path);
+    if (!blob) {
+      return null;
+    }
+    this.localAssetBlobs.set(item.workspaceId, {
+      original: kind === 'original' ? blob : cached?.original || null,
+      thumbnail: kind === 'thumbnail' ? blob : cached?.thumbnail || null,
+    });
+    return blob;
+  }
+
+  async rehydrateLocalDraftAssetUrls() {
+    for (const item of this.state.assets) {
+      if (!item.isLocalDraftAsset) {
+        continue;
+      }
+      if (!item.previewUrl) {
+        const originalBlob = await this.loadLocalAssetBlob(item, 'original');
+        if (originalBlob) {
+          item.previewUrl = URL.createObjectURL(originalBlob);
+          this.registerObjectUrl(item.previewUrl);
+        }
+      }
+      if (!item.thumbnailPreviewUrl) {
+        const thumbBlob = await this.loadLocalAssetBlob(item, 'thumbnail');
+        if (thumbBlob) {
+          item.thumbnailPreviewUrl = URL.createObjectURL(thumbBlob);
+          this.registerObjectUrl(item.thumbnailPreviewUrl);
+        }
+      }
+      if (!item.media?.thumbnailUrl && item.thumbnailRepoPath) {
+        item.media = {
+          ...(item.media || {}),
+          thumbnailUrl: item.thumbnailRepoPath,
+        };
+      }
+    }
+  }
+
+  refreshSourceCollectionsAndCounts(sourceId) {
+    const source = this.getSourceById(sourceId);
+    if (!source) {
+      return;
+    }
+    const sourceAssets = this.state.assets.filter((item) => item.sourceId === sourceId);
+    source.collections = this.buildCollectionsForSource(source, sourceAssets);
+    source.itemCount = sourceAssets.length;
+    if (!source.collections.some((entry) => entry.id === source.selectedCollectionId)) {
+      source.selectedCollectionId = source.collections[0]?.id || null;
+    }
+  }
+
+  async ingestImageFiles(files) {
+    const source = this.getActiveIngestionSource();
+    if (!source) {
+      return;
+    }
+
+    const accepted = files.filter((file) => this.isSupportedImageFile(file));
+    if (accepted.length === 0) {
+      this.setStatus('No supported image files found. Use JPG, PNG, WEBP, or GIF.', 'warn');
+      return;
+    }
+
+    const rejected = files.length - accepted.length;
+    if (rejected > 0) {
+      this.setStatus(`Skipped ${rejected} unsupported file(s).`, 'warn');
+    }
+
+    const collectionId = this.ensureCollectionForSource(source);
+    const collectionLabel = this.collectionLabelFor(source, collectionId);
+    const created = [];
+
+    for (const file of accepted) {
+      const ext = this.extensionFromName(file.name, '.jpg');
+      const baseId = this.slugifySegment(file.name.replace(/\.[^.]+$/, ''), 'image');
+      const itemId = this.uniqueDraftItemId(baseId, source.id, collectionId);
+      const workspaceId = toWorkspaceItemId(source.id, itemId);
+      const title = this.readableTitleFromFilename(file.name, itemId);
+      const mediaRepoPath = `media/${itemId}${ext}`;
+      const thumbRepoPath = `thumbs/${itemId}.thumb.jpg`;
+      const localFileRef = this.collectionAssetPath(workspaceId, 'original', ext);
+      const localThumbnailRef = this.collectionAssetPath(workspaceId, 'thumbnail', '.jpg');
+
+      const previewUrl = URL.createObjectURL(file);
+      this.registerObjectUrl(previewUrl);
+      let thumbnailBlob = null;
+      let thumbnailPreviewUrl = '';
+      try {
+        thumbnailBlob = await this.generateThumbnailBlob(file);
+      } catch (error) {
+        thumbnailBlob = null;
+      }
+
+      if (thumbnailBlob) {
+        thumbnailPreviewUrl = URL.createObjectURL(thumbnailBlob);
+        this.registerObjectUrl(thumbnailPreviewUrl);
+      }
+
+      const item = {
+        id: itemId,
+        title,
+        description: '',
+        creator: '',
+        date: '',
+        location: '',
+        license: '',
+        attribution: '',
+        source: '',
+        tags: [],
+        include: true,
+        media: {
+          type: 'image',
+          url: mediaRepoPath,
+          thumbnailUrl: thumbRepoPath,
+        },
+        previewUrl,
+        thumbnailPreviewUrl,
+        thumbnailRepoPath: thumbRepoPath,
+        isLocalDraftAsset: true,
+        draftUploadStatus: 'pending-upload',
+        uploadError: '',
+        sourceAssetId: itemId,
+        workspaceId,
+        sourceId: source.id,
+        sourceLabel: source.label,
+        sourceDisplayLabel: source.displayLabel || source.label,
+        providerId: source.providerId,
+        collectionId,
+        collectionLabel,
+        localFileRef,
+        localThumbnailRef: thumbnailBlob ? localThumbnailRef : '',
+      };
+
+      await this.rememberLocalAssetFiles(item, file, thumbnailBlob);
+      created.push(item);
+    }
+
+    if (created.length === 0) {
+      return;
+    }
+
+    this.state.assets = [...this.state.assets, ...created];
+    this.refreshSourceCollectionsAndCounts(source.id);
+    this.state.selectedCollectionId = collectionId;
+    this.state.selectedItemId = created[0].workspaceId;
+    this.renderSourcesList();
+    this.renderSourceFilter();
+    this.renderCollectionFilter();
+    this.renderAssets();
+    this.renderEditor();
+
+    if (this.state.opfsAvailable) {
+      await this.saveLocalDraft();
+    }
+
+    this.setStatus(
+      `${created.length} file${created.length === 1 ? '' : 's'} added to local draft. Ready to publish.`,
+      'ok',
+    );
   }
 
   renderCapabilities(capabilitiesOrProvider) {
@@ -1855,21 +2381,160 @@ class TimemapCollectorElement extends HTMLElement {
     };
   }
 
+  currentWorkspaceSnapshot() {
+    return {
+      selectedSourceId: this.state.activeSourceFilter || 'all',
+      selectedCollectionId: this.state.selectedCollectionId || 'all',
+      selectedItemId: this.state.selectedItemId || null,
+      collectionMeta: this.currentCollectionMeta(),
+      draftCollectionId: this.draftCollectionId(),
+      lastLocalSaveAt: this.state.lastLocalSaveAt || '',
+    };
+  }
+
+  buildLocalDraftPayload() {
+    return {
+      savedAt: new Date().toISOString(),
+      collectionMeta: this.currentCollectionMeta(),
+      manifest: this.state.manifest || null,
+      selectedItemId: this.state.selectedItemId || null,
+      selectedSourceId: this.state.activeSourceFilter || 'all',
+      selectedCollectionId: this.state.selectedCollectionId || 'all',
+      assets: this.state.assets.map((item) => ({
+        ...item,
+        previewUrl: '',
+        thumbnailPreviewUrl: '',
+        draftUploadStatus: item.draftUploadStatus === 'uploading' ? 'pending-upload' : item.draftUploadStatus,
+        workspaceId: item.workspaceId,
+        sourceId: item.sourceId,
+        sourceAssetId: item.sourceAssetId,
+        sourceLabel: item.sourceLabel,
+        sourceDisplayLabel: item.sourceDisplayLabel,
+        providerId: item.providerId,
+        collectionId: item.collectionId || null,
+        collectionLabel: item.collectionLabel || '',
+      })),
+      sources: this.state.sources.map((source) => this.toPersistedSource(source)),
+    };
+  }
+
+  async persistSourcesToOpfs(payload) {
+    if (!this.state.opfsAvailable) {
+      return;
+    }
+
+    const existingFiles = await this.opfsStorage.listFiles(SOURCES_DIR_PATH);
+    const keep = new Set(payload.map((entry) => `${entry.id}.json`));
+    for (const fileName of existingFiles) {
+      if (!keep.has(fileName)) {
+        await this.opfsStorage.deleteFile(`${SOURCES_DIR_PATH}/${fileName}`);
+      }
+    }
+
+    for (const source of payload) {
+      await this.opfsStorage.writeJsonFile(this.sourceFilePath(source.id), source);
+    }
+  }
+
+  async persistWorkspaceToOpfs(extra = {}) {
+    if (!this.state.opfsAvailable) {
+      return;
+    }
+
+    const workspace = {
+      ...this.currentWorkspaceSnapshot(),
+      ...extra,
+    };
+    await this.opfsStorage.writeJsonFile(WORKSPACE_FILE_PATH, workspace);
+  }
+
+  async loadRememberedSourcesFromOpfs() {
+    if (!this.state.opfsAvailable) {
+      return [];
+    }
+
+    const files = await this.opfsStorage.listFiles(SOURCES_DIR_PATH);
+    if (files.length === 0) {
+      return [];
+    }
+
+    const remembered = [];
+    for (const file of files) {
+      const data = await this.opfsStorage.readJsonFile(`${SOURCES_DIR_PATH}/${file}`);
+      if (data && typeof data === 'object') {
+        remembered.push(data);
+      }
+    }
+    return remembered;
+  }
+
+  applyWorkspaceSnapshot(snapshot = {}) {
+    if (!snapshot || typeof snapshot !== 'object') {
+      return;
+    }
+
+    if (snapshot.collectionMeta && typeof snapshot.collectionMeta === 'object') {
+      this.dom.collectionId.value = snapshot.collectionMeta.id || this.dom.collectionId.value;
+      this.dom.collectionTitle.value = snapshot.collectionMeta.title || this.dom.collectionTitle.value;
+      this.dom.collectionDescription.value =
+        snapshot.collectionMeta.description || this.dom.collectionDescription.value;
+    }
+
+    if (snapshot.selectedSourceId && (snapshot.selectedSourceId === 'all' || this.state.sources.some((entry) => entry.id === snapshot.selectedSourceId))) {
+      this.state.activeSourceFilter = snapshot.selectedSourceId;
+    }
+    this.renderSourceFilter();
+
+    if (snapshot.selectedCollectionId) {
+      this.state.selectedCollectionId = snapshot.selectedCollectionId;
+      this.renderCollectionFilter();
+    }
+
+    if (
+      snapshot.selectedItemId &&
+      this.state.assets.some((entry) => entry.workspaceId === snapshot.selectedItemId)
+    ) {
+      this.state.selectedItemId = snapshot.selectedItemId;
+    }
+  }
+
   saveSourcesToStorage() {
+    const payload = this.state.sources.map((source) => this.toPersistedSource(source));
+
     try {
-      const payload = this.state.sources.map((source) => this.toPersistedSource(source));
       window.localStorage.setItem(SOURCES_STORAGE_KEY, JSON.stringify(payload));
     } catch (error) {
       // Ignore storage failures in restricted/private browser modes.
     }
+
+    if (!this.state.opfsAvailable) {
+      return;
+    }
+
+    this.persistSourcesToOpfs(payload)
+      .then(() => this.persistWorkspaceToOpfs())
+      .catch((error) => {
+        this.setLocalDraftStatus(`Local draft save failed: ${error.message}`, 'warn');
+      });
   }
 
   async restoreRememberedSources() {
     let remembered = [];
-    try {
-      remembered = JSON.parse(window.localStorage.getItem(SOURCES_STORAGE_KEY) || '[]');
-    } catch (error) {
-      remembered = [];
+
+    if (this.state.opfsAvailable) {
+      try {
+        remembered = await this.loadRememberedSourcesFromOpfs();
+      } catch (error) {
+        remembered = [];
+      }
+    }
+
+    if (!Array.isArray(remembered) || remembered.length === 0) {
+      try {
+        remembered = JSON.parse(window.localStorage.getItem(SOURCES_STORAGE_KEY) || '[]');
+      } catch (error) {
+        remembered = [];
+      }
     }
 
     if (!Array.isArray(remembered) || remembered.length === 0) {
@@ -1928,6 +2593,170 @@ class TimemapCollectorElement extends HTMLElement {
         // Non-secret sources can reconnect automatically.
         await this.refreshSource(source.id);
       }
+    }
+  }
+
+  async initializeLocalDraftState() {
+    try {
+      this.state.opfsAvailable = await this.opfsStorage.isOpfsAvailable();
+    } catch (error) {
+      this.state.opfsAvailable = false;
+    }
+
+    if (!this.state.opfsAvailable) {
+      this.setLocalDraftStatus('Local draft storage not available in this browser.', 'warn');
+      this.setLocalDraftControlsEnabled(false);
+      await this.restoreRememberedSources();
+      return;
+    }
+
+    this.setLocalDraftStatus('Local draft storage available.', 'ok');
+    this.setLocalDraftControlsEnabled(true);
+    await this.restoreRememberedSources();
+
+    const workspace = await this.opfsStorage.readJsonFile(WORKSPACE_FILE_PATH);
+    if (workspace) {
+      this.state.lastLocalSaveAt = workspace.lastLocalSaveAt || '';
+      this.applyWorkspaceSnapshot(workspace);
+      await this.restoreLocalDraft({ silent: true, preferredCollectionId: workspace.draftCollectionId || '' });
+      if (this.state.lastLocalSaveAt) {
+        this.setLocalDraftStatus(`Local draft ready (last saved ${this.state.lastLocalSaveAt}).`, 'ok');
+      }
+    }
+
+    this.renderAssets();
+    this.renderEditor();
+  }
+
+  async saveLocalDraft() {
+    if (!this.state.opfsAvailable) {
+      this.setLocalDraftStatus('Local draft storage not available in this browser.', 'warn');
+      return;
+    }
+
+    try {
+      const collectionId = this.draftCollectionId();
+      const payload = this.buildLocalDraftPayload();
+      await this.opfsStorage.writeJsonFile(this.draftFilePath(collectionId), payload);
+      this.state.lastLocalSaveAt = payload.savedAt;
+      await this.persistWorkspaceToOpfs({
+        draftCollectionId: collectionId,
+        lastLocalSaveAt: payload.savedAt,
+      });
+      await this.persistSourcesToOpfs(this.state.sources.map((source) => this.toPersistedSource(source)));
+      this.setLocalDraftStatus(`Saved local draft at ${payload.savedAt}.`, 'ok');
+      this.setStatus('Local draft saved to OPFS.', 'ok');
+    } catch (error) {
+      this.setLocalDraftStatus(`Local draft save failed: ${error.message}`, 'warn');
+      this.setStatus(`Local draft save failed: ${error.message}`, 'warn');
+    }
+  }
+
+  applyLocalDraftPayload(payload) {
+    if (!payload || typeof payload !== 'object') {
+      return;
+    }
+
+    if (payload.collectionMeta && typeof payload.collectionMeta === 'object') {
+      this.dom.collectionId.value = payload.collectionMeta.id || this.dom.collectionId.value;
+      this.dom.collectionTitle.value = payload.collectionMeta.title || this.dom.collectionTitle.value;
+      this.dom.collectionDescription.value =
+        payload.collectionMeta.description || this.dom.collectionDescription.value;
+    }
+
+    if (Array.isArray(payload.assets)) {
+      this.state.assets = payload.assets.map((item) => ({ ...item }));
+      for (const source of this.state.sources) {
+        this.refreshSourceCollectionsAndCounts(source.id);
+      }
+      this.renderSourcesList();
+    }
+
+    if (payload.manifest && typeof payload.manifest === 'object') {
+      this.state.manifest = payload.manifest;
+      this.dom.manifestPreview.textContent = JSON.stringify(payload.manifest, null, 2);
+    }
+
+    if (payload.selectedSourceId) {
+      this.state.activeSourceFilter = payload.selectedSourceId;
+    }
+    this.renderSourceFilter();
+
+    if (payload.selectedCollectionId) {
+      this.state.selectedCollectionId = payload.selectedCollectionId;
+      this.renderCollectionFilter();
+    }
+
+    if (
+      payload.selectedItemId &&
+      this.state.assets.some((entry) => entry.workspaceId === payload.selectedItemId)
+    ) {
+      this.state.selectedItemId = payload.selectedItemId;
+    }
+
+    this.renderAssets();
+    this.renderEditor();
+  }
+
+  async restoreLocalDraft(options = {}) {
+    if (!this.state.opfsAvailable) {
+      this.setLocalDraftStatus('Local draft storage not available in this browser.', 'warn');
+      return;
+    }
+
+    const preferredCollectionId = (options.preferredCollectionId || '').trim();
+    const collectionId = preferredCollectionId || this.draftCollectionId();
+    try {
+      const payload = await this.opfsStorage.readJsonFile(this.draftFilePath(collectionId));
+      if (!payload) {
+        if (!options.silent) {
+          this.setLocalDraftStatus(`No local draft found for ${collectionId}.`, 'warn');
+        }
+        return;
+      }
+
+      this.applyLocalDraftPayload(payload);
+      await this.rehydrateLocalDraftAssetUrls();
+      this.renderAssets();
+      this.renderEditor();
+      this.state.lastLocalSaveAt = payload.savedAt || '';
+      if (!options.silent) {
+        const restoredSuffix = payload.savedAt ? ` from ${payload.savedAt}` : '';
+        this.setLocalDraftStatus(
+          `Restored local draft${restoredSuffix}.`,
+          'ok',
+        );
+        this.setStatus('Local draft restored from OPFS.', 'ok');
+      }
+    } catch (error) {
+      this.setLocalDraftStatus(`Local draft restore failed: ${error.message}`, 'warn');
+      if (!options.silent) {
+        this.setStatus(`Local draft restore failed: ${error.message}`, 'warn');
+      }
+    }
+  }
+
+  async discardLocalDraft() {
+    if (!this.state.opfsAvailable) {
+      this.setLocalDraftStatus('Local draft storage not available in this browser.', 'warn');
+      return;
+    }
+
+    const collectionId = this.draftCollectionId();
+    try {
+      await this.opfsStorage.deleteFile(this.draftFilePath(collectionId));
+      const workspace = (await this.opfsStorage.readJsonFile(WORKSPACE_FILE_PATH)) || {};
+      if (workspace.draftCollectionId === collectionId) {
+        delete workspace.draftCollectionId;
+        workspace.lastLocalSaveAt = '';
+        await this.opfsStorage.writeJsonFile(WORKSPACE_FILE_PATH, workspace);
+      }
+      this.state.lastLocalSaveAt = '';
+      this.setLocalDraftStatus(`Discarded local draft ${collectionId}.`, 'ok');
+      this.setStatus(`Discarded local draft ${collectionId}.`, 'ok');
+    } catch (error) {
+      this.setLocalDraftStatus(`Discard draft failed: ${error.message}`, 'warn');
+      this.setStatus(`Discard draft failed: ${error.message}`, 'warn');
     }
   }
 
@@ -1995,7 +2824,7 @@ class TimemapCollectorElement extends HTMLElement {
 
   createPreviewNode(item) {
     const mediaType = (item.media?.type || '').toLowerCase();
-    const url = item.media?.thumbnailUrl || item.media?.url;
+    const url = item.thumbnailPreviewUrl || item.previewUrl || item.media?.thumbnailUrl || item.media?.url;
 
     if (!url) {
       const placeholder = document.createElement('div');
@@ -2070,7 +2899,7 @@ class TimemapCollectorElement extends HTMLElement {
     this.dom.viewerBadges.append(sourceBadge, typeBadge, licenseBadge);
 
     const mediaType = (item.media?.type || '').toLowerCase();
-    const mediaUrl = item.media?.url || item.media?.thumbnailUrl || '';
+    const mediaUrl = item.previewUrl || item.thumbnailPreviewUrl || item.media?.url || item.media?.thumbnailUrl || '';
     if (mediaUrl && mediaType.includes('image')) {
       const image = document.createElement('img');
       image.className = 'viewer-image';
@@ -2093,8 +2922,9 @@ class TimemapCollectorElement extends HTMLElement {
       this.dom.viewerMedia.appendChild(placeholder);
     }
 
-    if (mediaUrl) {
-      this.dom.viewerOpenOriginal.href = mediaUrl;
+    const openOriginalUrl = item.media?.url || mediaUrl;
+    if (openOriginalUrl) {
+      this.dom.viewerOpenOriginal.href = openOriginalUrl;
       this.dom.viewerOpenOriginal.classList.remove('is-hidden');
     } else {
       this.dom.viewerOpenOriginal.removeAttribute('href');
@@ -2180,6 +3010,27 @@ class TimemapCollectorElement extends HTMLElement {
       sourceBadge.className = 'badge source-badge';
       sourceBadge.textContent = this.formatSourceBadge(item);
 
+      if (item.isLocalDraftAsset || item.draftUploadStatus) {
+        const draftStatus = document.createElement('span');
+        const status = item.draftUploadStatus || 'pending-upload';
+        const labels = {
+          'pending-upload': 'Pending upload',
+          uploading: 'Uploading',
+          uploaded: 'Uploaded',
+          failed: 'Upload failed',
+        };
+        draftStatus.className = `badge asset-status-${status}`;
+        draftStatus.textContent = labels[status] || status;
+        badges.appendChild(draftStatus);
+      }
+
+      if (item.isLocalDraftAsset) {
+        const localBadge = document.createElement('span');
+        localBadge.className = 'badge asset-status-local';
+        localBadge.textContent = 'Local';
+        badges.appendChild(localBadge);
+      }
+
       badges.append(completeness, license, include, sourceBadge);
 
       const actions = document.createElement('div');
@@ -2221,6 +3072,9 @@ class TimemapCollectorElement extends HTMLElement {
     this.state.selectedItemId = itemId;
     this.renderAssets();
     this.renderEditor();
+    if (this.state.opfsAvailable) {
+      this.persistWorkspaceToOpfs().catch(() => {});
+    }
   }
 
   findSelectedItem() {
@@ -2245,6 +3099,13 @@ class TimemapCollectorElement extends HTMLElement {
     this.dom.editorStatus.textContent = canSave
       ? `Editing ${selected.id} from ${selected.sourceDisplayLabel || selected.sourceLabel}`
       : `Editing ${selected.id} from ${selected.sourceDisplayLabel || selected.sourceLabel} (read-only source, local edits only)`;
+    if (selected.draftUploadStatus === 'pending-upload') {
+      this.dom.editorStatus.textContent += ' | Pending upload';
+    } else if (selected.draftUploadStatus === 'uploading') {
+      this.dom.editorStatus.textContent += ' | Uploading';
+    } else if (selected.draftUploadStatus === 'failed') {
+      this.dom.editorStatus.textContent += ' | Upload failed';
+    }
 
     this.dom.itemTitle.value = selected.title || '';
     this.dom.itemDescription.value = selected.description || '';
@@ -2293,7 +3154,7 @@ class TimemapCollectorElement extends HTMLElement {
     }
 
     const source = this.getSourceById(current.sourceId);
-    const canSave = Boolean(source?.capabilities?.canSaveMetadata);
+    const canSave = Boolean(source?.capabilities?.canSaveMetadata) && !current.isLocalDraftAsset;
 
     if (canSave && source?.provider) {
       try {
@@ -2349,7 +3210,11 @@ class TimemapCollectorElement extends HTMLElement {
     }
 
     if (options.explicitSave && !canSave) {
-      this.setStatus('Selected item source is read-only. Changes are local only.', 'warn');
+      if (current.isLocalDraftAsset) {
+        this.setStatus('Local draft metadata saved. Publish to upload this asset.', 'ok');
+      } else {
+        this.setStatus('Selected item source is read-only. Changes are local only.', 'warn');
+      }
     }
 
     this.renderAssets();
@@ -2661,33 +3526,227 @@ class TimemapCollectorElement extends HTMLElement {
     };
   }
 
-  async generateManifest() {
+  toManifestItem(item) {
+    const {
+      workspaceId,
+      sourceId,
+      sourceLabel,
+      sourceDisplayLabel,
+      providerId,
+      sourceAssetId,
+      collectionId,
+      collectionLabel,
+      previewUrl,
+      thumbnailPreviewUrl,
+      thumbnailRepoPath,
+      isLocalDraftAsset,
+      draftUploadStatus,
+      uploadError,
+      localFileRef,
+      localThumbnailRef,
+      ...manifestItem
+    } = item;
+    return manifestItem;
+  }
+
+  buildManifestFromState() {
+    const baseFromCurrent =
+      this.state.manifest && typeof this.state.manifest === 'object'
+        ? JSON.parse(JSON.stringify(this.state.manifest))
+        : {};
+    const collectionMeta = this.currentCollectionMeta();
+    const includedItems = this.state.assets
+      .filter((item) => item.include !== false)
+      .map((item) => this.toManifestItem(item));
+    const baseManifest = createManifest(collectionMeta, includedItems);
+    return {
+      ...baseFromCurrent,
+      ...baseManifest,
+      items: includedItems,
+    };
+  }
+
+  async generateManifest(options = {}) {
     if (this.state.sources.length === 0) {
       this.setStatus('Add at least one source before generating a manifest.', 'warn');
-      return;
+      return null;
     }
 
     try {
-      const baseManifest = this.currentCollectionMeta();
-      const includedItems = this.state.assets
-        .filter((item) => item.include !== false)
-        .map((item) => {
-          const { workspaceId, sourceId, sourceLabel, providerId, sourceAssetId, collectionId, collectionLabel, ...manifestItem } = item;
-          return manifestItem;
-        });
-
-      const manifest = createManifest(baseManifest, includedItems);
+      const manifest = this.buildManifestFromState();
       const errors = validateCollectionShape(manifest);
       if (errors.length > 0) {
         this.setStatus(`Manifest validation failed: ${errors.join(' ')}`, 'warn');
-        return;
+        return null;
       }
 
       this.state.manifest = manifest;
       this.dom.manifestPreview.textContent = JSON.stringify(manifest, null, 2);
-      this.setStatus('Manifest generated and validated.', 'ok');
+      if (!options.silent) {
+        this.setStatus('Manifest generated and validated.', 'ok');
+      }
+      if (this.state.opfsAvailable) {
+        this.persistWorkspaceToOpfs().catch(() => {});
+      }
+      return manifest;
     } catch (error) {
       this.setStatus(`Manifest generation failed: ${error.message}`, 'warn');
+      return null;
+    }
+  }
+
+  resolvePublishSource() {
+    if (!this.state.sources.length) {
+      return null;
+    }
+    if (this.state.activeSourceFilter === 'all') {
+      return null;
+    }
+    return this.getSourceById(this.state.activeSourceFilter);
+  }
+
+  async publishActiveSourceDraft() {
+    const source = this.resolvePublishSource();
+    if (!source) {
+      this.setStatus('Select a single source in the viewport filter before publishing.', 'warn');
+      return;
+    }
+
+    if (source.providerId !== 'github') {
+      this.setStatus('Publish upload is currently implemented for GitHub sources only.', 'warn');
+      return;
+    }
+
+    if (!source.provider || typeof source.provider.publishCollection !== 'function') {
+      this.setStatus('This source does not support upload publishing yet.', 'warn');
+      return;
+    }
+
+    const manifest = await this.generateManifest({ silent: true });
+    if (!manifest) {
+      return;
+    }
+
+    const pending = this.state.assets.filter(
+      (item) =>
+        item.sourceId === source.id &&
+        item.isLocalDraftAsset &&
+        item.include !== false &&
+        item.draftUploadStatus !== 'uploaded',
+    );
+
+    if (pending.length === 0) {
+      this.setStatus('No pending local assets. Uploading manifest only...', 'neutral');
+    } else {
+      this.setStatus(`Uploading ${pending.length} asset(s) to GitHub...`, 'neutral');
+    }
+
+    this.state.assets = this.state.assets.map((item) => {
+      if (!pending.some((entry) => entry.workspaceId === item.workspaceId)) {
+        return item;
+      }
+      return {
+        ...item,
+        draftUploadStatus: 'uploading',
+        uploadError: '',
+      };
+    });
+    this.renderAssets();
+    this.renderEditor();
+
+    const uploads = [];
+    let failedPreparationCount = 0;
+    for (const item of pending) {
+      const original = await this.loadLocalAssetBlob(item, 'original');
+      if (!original) {
+        failedPreparationCount += 1;
+        this.state.assets = this.state.assets.map((entry) =>
+          entry.workspaceId === item.workspaceId
+            ? { ...entry, draftUploadStatus: 'failed', uploadError: 'Original file missing from local draft storage.' }
+            : entry,
+        );
+        continue;
+      }
+
+      uploads.push({
+        path: item.media?.url || '',
+        blob: original,
+        message: `Upload ${item.id} original via TimeMap Collector`,
+      });
+
+      const thumb = await this.loadLocalAssetBlob(item, 'thumbnail');
+      if (thumb && item.thumbnailRepoPath) {
+        uploads.push({
+          path: item.thumbnailRepoPath,
+          blob: thumb,
+          message: `Upload ${item.id} thumbnail via TimeMap Collector`,
+        });
+      }
+    }
+
+    if (failedPreparationCount > 0) {
+      this.renderAssets();
+      this.renderEditor();
+      this.setStatus(`${failedPreparationCount} asset(s) failed local draft preparation. Fix and retry publish.`, 'warn');
+      return;
+    }
+
+    try {
+      const result = await source.provider.publishCollection({
+        manifest,
+        uploads,
+        commitMessage: `Publish collection ${manifest.id} via TimeMap Collector`,
+      });
+      const uploadedMap = new Map((result.uploaded || []).map((entry) => [entry.path, entry.rawUrl]));
+
+      this.state.assets = this.state.assets.map((item) => {
+        if (item.sourceId !== source.id || !item.isLocalDraftAsset) {
+          return item;
+        }
+        const nextMediaUrl = item.media?.url ? uploadedMap.get(item.media.url) || item.media.url : item.media?.url;
+        const nextThumbPath = item.thumbnailRepoPath || item.media?.thumbnailUrl || '';
+        const nextThumbUrl = nextThumbPath ? uploadedMap.get(nextThumbPath) || item.media?.thumbnailUrl || nextThumbPath : item.media?.thumbnailUrl;
+        return {
+          ...item,
+          media: {
+            ...(item.media || {}),
+            url: nextMediaUrl,
+            thumbnailUrl: nextThumbUrl,
+          },
+          draftUploadStatus: 'uploaded',
+          isLocalDraftAsset: false,
+          uploadError: '',
+        };
+      });
+
+      source.status = `Published ${manifest.id} (${this.state.assets.filter((item) => item.sourceId === source.id).length} items).`;
+      this.state.manifest = manifest;
+      this.dom.manifestPreview.textContent = JSON.stringify(manifest, null, 2);
+      this.refreshSourceCollectionsAndCounts(source.id);
+      this.renderSourcesList();
+      this.renderSourceFilter();
+      this.renderCollectionFilter();
+      this.renderAssets();
+      this.renderEditor();
+
+      if (this.state.opfsAvailable) {
+        await this.saveLocalDraft();
+      }
+      this.setStatus('Upload complete. GitHub media, thumbnails, and collection.json published.', 'ok');
+    } catch (error) {
+      this.state.assets = this.state.assets.map((item) => {
+        if (item.sourceId !== source.id || item.draftUploadStatus !== 'uploading') {
+          return item;
+        }
+        return {
+          ...item,
+          draftUploadStatus: 'failed',
+          uploadError: error.message,
+        };
+      });
+      this.renderAssets();
+      this.renderEditor();
+      this.setStatus(`Upload failed: ${error.message}`, 'warn');
     }
   }
 
