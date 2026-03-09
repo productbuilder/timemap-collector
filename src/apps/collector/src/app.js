@@ -1,7 +1,4 @@
-import {
-  createManifest,
-  validateCollectionShape,
-} from '../../../packages/collector-schema/src/schema.js';
+import { validateCollectionShape } from '../../../packages/collector-schema/src/schema.js';
 import { createLocalProvider } from '../../../packages/provider-local/src/index.js';
 import { createPublicUrlProvider } from '../../../packages/provider-public-url/src/index.js';
 import { createGithubProvider } from '../../../packages/provider-github/src/index.js';
@@ -46,6 +43,7 @@ class TimemapCollectorElement extends HTMLElement {
       opfsStatus: 'Checking local draft storage...',
       lastLocalSaveAt: '',
       isDropTargetActive: false,
+      localDraftCollections: [],
     };
 
     this.opfsStorage = createOpfsStorage();
@@ -871,6 +869,7 @@ class TimemapCollectorElement extends HTMLElement {
             <p id="statusText" class="status">Not connected.</p>
           </div>
           <div class="top-actions">
+            <button class="btn btn-primary" id="openNewCollectionBtn" type="button">New collection</button>
             <button class="btn" id="openProviderBtn" type="button">Sources</button>
             <button class="btn" id="openPublishBtn" type="button">Publish</button>
             <button class="btn" id="openRegisterBtn" type="button">Register</button>
@@ -1033,6 +1032,9 @@ class TimemapCollectorElement extends HTMLElement {
             <div class="field-row"><label for="collectionId">Collection ID</label><input id="collectionId" type="text" /></div>
             <div class="field-row"><label for="collectionTitle">Collection title</label><input id="collectionTitle" type="text" /></div>
             <div class="field-row"><label for="collectionDescription">Collection description</label><textarea id="collectionDescription"></textarea></div>
+            <div class="field-row"><label for="collectionLicense">Collection license</label><input id="collectionLicense" type="text" /></div>
+            <div class="field-row"><label for="collectionPublisher">Collection publisher</label><input id="collectionPublisher" type="text" /></div>
+            <div class="field-row"><label for="collectionLanguage">Collection language</label><input id="collectionLanguage" type="text" /></div>
             <div class="dialog-actions">
               <button class="btn btn-primary" id="generateManifestBtn" type="button">Generate collection.json</button>
               <button class="btn btn-primary" id="publishToSourceBtn" type="button">Upload to GitHub</button>
@@ -1044,6 +1046,26 @@ class TimemapCollectorElement extends HTMLElement {
             </div>
             <p id="localDraftStatus" class="panel-subtext">Checking local draft storage...</p>
             <pre id="manifestPreview"></pre>
+          </div>
+        </div>
+      </dialog>
+
+      <dialog id="newCollectionDialog" aria-label="Create new collection">
+        <div class="dialog-shell">
+          <div class="dialog-header">
+            <h2 class="dialog-title">Create new collection</h2>
+            <button class="btn" data-close="newCollectionDialog" type="button">Close</button>
+          </div>
+          <div class="dialog-body">
+            <div class="field-row"><label for="newCollectionTitle">Title</label><input id="newCollectionTitle" type="text" placeholder="My Collection" /></div>
+            <div class="field-row"><label for="newCollectionSlug">ID / Slug</label><input id="newCollectionSlug" type="text" placeholder="my-collection" /></div>
+            <div class="field-row"><label for="newCollectionDescription">Description</label><textarea id="newCollectionDescription"></textarea></div>
+            <div class="field-row"><label for="newCollectionLicense">License (optional)</label><input id="newCollectionLicense" type="text" /></div>
+            <div class="field-row"><label for="newCollectionPublisher">Publisher (optional)</label><input id="newCollectionPublisher" type="text" /></div>
+            <div class="field-row"><label for="newCollectionLanguage">Language (optional)</label><input id="newCollectionLanguage" type="text" /></div>
+            <div class="dialog-actions">
+              <button class="btn btn-primary" id="createCollectionBtn" type="button">Create collection</button>
+            </div>
           </div>
         </div>
       </dialog>
@@ -1230,11 +1252,13 @@ class TimemapCollectorElement extends HTMLElement {
     const root = this.shadow;
     this.dom = {
       statusText: root.getElementById('statusText'),
+      openNewCollectionBtn: root.getElementById('openNewCollectionBtn'),
       openProviderBtn: root.getElementById('openProviderBtn'),
       openPublishBtn: root.getElementById('openPublishBtn'),
       openRegisterBtn: root.getElementById('openRegisterBtn'),
       providerDialog: root.getElementById('providerDialog'),
       publishDialog: root.getElementById('publishDialog'),
+      newCollectionDialog: root.getElementById('newCollectionDialog'),
       registerDialog: root.getElementById('registerDialog'),
       storageOptionsDialog: root.getElementById('storageOptionsDialog'),
       assetViewerDialog: root.getElementById('assetViewerDialog'),
@@ -1298,6 +1322,16 @@ class TimemapCollectorElement extends HTMLElement {
       collectionId: root.getElementById('collectionId'),
       collectionTitle: root.getElementById('collectionTitle'),
       collectionDescription: root.getElementById('collectionDescription'),
+      collectionLicense: root.getElementById('collectionLicense'),
+      collectionPublisher: root.getElementById('collectionPublisher'),
+      collectionLanguage: root.getElementById('collectionLanguage'),
+      newCollectionTitle: root.getElementById('newCollectionTitle'),
+      newCollectionSlug: root.getElementById('newCollectionSlug'),
+      newCollectionDescription: root.getElementById('newCollectionDescription'),
+      newCollectionLicense: root.getElementById('newCollectionLicense'),
+      newCollectionPublisher: root.getElementById('newCollectionPublisher'),
+      newCollectionLanguage: root.getElementById('newCollectionLanguage'),
+      createCollectionBtn: root.getElementById('createCollectionBtn'),
       generateManifestBtn: root.getElementById('generateManifestBtn'),
       publishToSourceBtn: root.getElementById('publishToSourceBtn'),
       copyManifestBtn: root.getElementById('copyManifestBtn'),
@@ -1314,6 +1348,9 @@ class TimemapCollectorElement extends HTMLElement {
     this.dom.collectionId.value = COLLECTOR_CONFIG.defaultCollectionMeta.id;
     this.dom.collectionTitle.value = COLLECTOR_CONFIG.defaultCollectionMeta.title;
     this.dom.collectionDescription.value = COLLECTOR_CONFIG.defaultCollectionMeta.description;
+    this.dom.collectionLicense.value = '';
+    this.dom.collectionPublisher.value = '';
+    this.dom.collectionLanguage.value = '';
     this.dom.manifestPreview.textContent = '{}';
   }
 
@@ -1328,6 +1365,7 @@ class TimemapCollectorElement extends HTMLElement {
     this.dom.openStorageOptionsBtn.addEventListener('click', () => this.openDialog(this.dom.storageOptionsDialog));
     this.dom.openPublishBtn.addEventListener('click', () => this.openDialog(this.dom.publishDialog));
     this.dom.openRegisterBtn.addEventListener('click', () => this.openDialog(this.dom.registerDialog));
+    this.dom.openNewCollectionBtn.addEventListener('click', () => this.openNewCollectionDialog());
     this.dom.closeViewerBtn.addEventListener('click', () => this.closeViewer());
     this.dom.assetViewerDialog.addEventListener('close', () => {
       this.state.viewerItemId = null;
@@ -1379,6 +1417,15 @@ class TimemapCollectorElement extends HTMLElement {
 
     this.dom.gdriveConnectAuthBtn.addEventListener('click', async () => {
       await this.connectGoogleDriveAuth();
+    });
+    this.dom.newCollectionTitle.addEventListener('input', () => {
+      const currentSlug = (this.dom.newCollectionSlug.value || '').trim();
+      if (!currentSlug) {
+        this.dom.newCollectionSlug.value = this.slugifySegment(this.dom.newCollectionTitle.value.trim(), 'new-collection');
+      }
+    });
+    this.dom.createCollectionBtn.addEventListener('click', async () => {
+      await this.createNewCollectionDraft();
     });
 
     this.dom.saveItemBtn.addEventListener('click', async () => {
@@ -1714,6 +1761,124 @@ class TimemapCollectorElement extends HTMLElement {
     return cleaned || fallbackId;
   }
 
+  openNewCollectionDialog() {
+    this.dom.newCollectionTitle.value = '';
+    this.dom.newCollectionSlug.value = '';
+    this.dom.newCollectionDescription.value = '';
+    this.dom.newCollectionLicense.value = '';
+    this.dom.newCollectionPublisher.value = '';
+    this.dom.newCollectionLanguage.value = '';
+    this.openDialog(this.dom.newCollectionDialog);
+  }
+
+  setCollectionMetaFields(meta = {}) {
+    this.dom.collectionId.value = meta.id || this.dom.collectionId.value;
+    this.dom.collectionTitle.value = meta.title || this.dom.collectionTitle.value;
+    this.dom.collectionDescription.value = meta.description || '';
+    this.dom.collectionLicense.value = meta.license || '';
+    this.dom.collectionPublisher.value = meta.publisher || '';
+    this.dom.collectionLanguage.value = meta.language || '';
+  }
+
+  collectionIdExists(collectionId) {
+    if (!collectionId) {
+      return false;
+    }
+    const id = collectionId.trim();
+    if (!id) {
+      return false;
+    }
+    for (const source of this.state.sources) {
+      if ((source.collections || []).some((entry) => entry.id === id)) {
+        return true;
+      }
+    }
+    return this.state.assets.some((item) => item.collectionId === id);
+  }
+
+  ensureUniqueCollectionId(baseId) {
+    if (!this.collectionIdExists(baseId)) {
+      return baseId;
+    }
+    let index = 2;
+    while (this.collectionIdExists(`${baseId}-${index}`)) {
+      index += 1;
+    }
+    return `${baseId}-${index}`;
+  }
+
+  buildInitialCollectionManifest(meta) {
+    return {
+      id: meta.id,
+      title: meta.title,
+      description: meta.description || '',
+      license: meta.license || '',
+      publisher: meta.publisher || '',
+      language: meta.language || '',
+      items: [],
+    };
+  }
+
+  async createNewCollectionDraft() {
+    const title = this.dom.newCollectionTitle.value.trim();
+    if (!title) {
+      this.setStatus('Enter a collection title to create a draft.', 'warn');
+      return;
+    }
+
+    let slug = (this.dom.newCollectionSlug.value || '').trim();
+    if (!slug) {
+      slug = this.slugifySegment(title, 'new-collection');
+    } else {
+      slug = this.slugifySegment(slug, 'new-collection');
+    }
+
+    slug = this.ensureUniqueCollectionId(slug);
+    const meta = {
+      id: slug,
+      title,
+      description: this.dom.newCollectionDescription.value.trim(),
+      license: this.dom.newCollectionLicense.value.trim(),
+      publisher: this.dom.newCollectionPublisher.value.trim(),
+      language: this.dom.newCollectionLanguage.value.trim(),
+    };
+
+    this.setCollectionMetaFields(meta);
+    this.state.manifest = this.buildInitialCollectionManifest(meta);
+    this.dom.manifestPreview.textContent = JSON.stringify(this.state.manifest, null, 2);
+    this.state.selectedItemId = null;
+    if (!this.state.localDraftCollections.some((entry) => entry.id === slug)) {
+      this.state.localDraftCollections = [...this.state.localDraftCollections, { id: slug, title }];
+    }
+
+    if (this.state.activeSourceFilter !== 'all') {
+      const source = this.getSourceById(this.state.activeSourceFilter);
+      if (source) {
+        const exists = (source.collections || []).some((entry) => entry.id === slug);
+        if (!exists) {
+          source.collections = [
+            ...(source.collections || []),
+            { id: slug, title },
+          ];
+        }
+        source.selectedCollectionId = slug;
+      }
+    }
+
+    this.state.selectedCollectionId = slug;
+    this.closeDialog(this.dom.newCollectionDialog);
+    this.renderSourcesList();
+    this.renderSourceFilter();
+    this.renderCollectionFilter();
+    this.renderAssets();
+    this.renderEditor();
+
+    if (this.state.opfsAvailable) {
+      await this.saveLocalDraft();
+    }
+    this.setStatus(`Created local draft collection ${slug}.`, 'ok');
+  }
+
   extensionFromName(name = '', fallback = '.jpg') {
     const match = String(name).toLowerCase().match(/\.[a-z0-9]+$/);
     return match ? match[0] : fallback;
@@ -1768,7 +1933,11 @@ class TimemapCollectorElement extends HTMLElement {
   ensureCollectionForSource(source) {
     const preferred = (this.state.selectedCollectionId || '').trim();
     const existing = source.collections || [];
-    if (preferred && preferred !== 'all' && existing.some((entry) => entry.id === preferred)) {
+    if (preferred && preferred !== 'all') {
+      if (!existing.some((entry) => entry.id === preferred)) {
+        const localEntry = this.state.localDraftCollections.find((entry) => entry.id === preferred);
+        source.collections = [...existing, { id: preferred, title: localEntry?.title || preferred }];
+      }
       source.selectedCollectionId = preferred;
       return preferred;
     }
@@ -2085,6 +2254,17 @@ class TimemapCollectorElement extends HTMLElement {
     if (this.state.activeSourceFilter !== 'all') {
       const activeSource = this.getSourceById(this.state.activeSourceFilter);
       collections = activeSource?.collections || [];
+      if (
+        previous !== 'all' &&
+        !collections.some((entry) => entry.id === previous)
+      ) {
+        const localEntry = this.state.localDraftCollections.find((entry) => entry.id === previous);
+        if (localEntry) {
+          collections = [...collections, localEntry];
+        }
+      }
+    } else if (this.state.localDraftCollections.length > 0) {
+      collections = this.state.localDraftCollections;
     }
 
     for (const collection of collections) {
@@ -2389,6 +2569,7 @@ class TimemapCollectorElement extends HTMLElement {
       collectionMeta: this.currentCollectionMeta(),
       draftCollectionId: this.draftCollectionId(),
       lastLocalSaveAt: this.state.lastLocalSaveAt || '',
+      localDraftCollections: this.state.localDraftCollections || [],
     };
   }
 
@@ -2400,6 +2581,7 @@ class TimemapCollectorElement extends HTMLElement {
       selectedItemId: this.state.selectedItemId || null,
       selectedSourceId: this.state.activeSourceFilter || 'all',
       selectedCollectionId: this.state.selectedCollectionId || 'all',
+      localDraftCollections: this.state.localDraftCollections || [],
       assets: this.state.assets.map((item) => ({
         ...item,
         previewUrl: '',
@@ -2472,12 +2654,21 @@ class TimemapCollectorElement extends HTMLElement {
     if (!snapshot || typeof snapshot !== 'object') {
       return;
     }
+    if (Array.isArray(snapshot.localDraftCollections)) {
+      this.state.localDraftCollections = snapshot.localDraftCollections
+        .filter((entry) => entry && entry.id)
+        .map((entry) => ({ id: String(entry.id), title: entry.title || String(entry.id) }));
+    }
 
     if (snapshot.collectionMeta && typeof snapshot.collectionMeta === 'object') {
-      this.dom.collectionId.value = snapshot.collectionMeta.id || this.dom.collectionId.value;
-      this.dom.collectionTitle.value = snapshot.collectionMeta.title || this.dom.collectionTitle.value;
-      this.dom.collectionDescription.value =
-        snapshot.collectionMeta.description || this.dom.collectionDescription.value;
+      this.setCollectionMetaFields({
+        id: snapshot.collectionMeta.id || this.dom.collectionId.value,
+        title: snapshot.collectionMeta.title || this.dom.collectionTitle.value,
+        description: snapshot.collectionMeta.description || this.dom.collectionDescription.value,
+        license: snapshot.collectionMeta.license || this.dom.collectionLicense.value,
+        publisher: snapshot.collectionMeta.publisher || this.dom.collectionPublisher.value,
+        language: snapshot.collectionMeta.language || this.dom.collectionLanguage.value,
+      });
     }
 
     if (snapshot.selectedSourceId && (snapshot.selectedSourceId === 'all' || this.state.sources.some((entry) => entry.id === snapshot.selectedSourceId))) {
@@ -2656,12 +2847,21 @@ class TimemapCollectorElement extends HTMLElement {
     if (!payload || typeof payload !== 'object') {
       return;
     }
+    if (Array.isArray(payload.localDraftCollections)) {
+      this.state.localDraftCollections = payload.localDraftCollections
+        .filter((entry) => entry && entry.id)
+        .map((entry) => ({ id: String(entry.id), title: entry.title || String(entry.id) }));
+    }
 
     if (payload.collectionMeta && typeof payload.collectionMeta === 'object') {
-      this.dom.collectionId.value = payload.collectionMeta.id || this.dom.collectionId.value;
-      this.dom.collectionTitle.value = payload.collectionMeta.title || this.dom.collectionTitle.value;
-      this.dom.collectionDescription.value =
-        payload.collectionMeta.description || this.dom.collectionDescription.value;
+      this.setCollectionMetaFields({
+        id: payload.collectionMeta.id || this.dom.collectionId.value,
+        title: payload.collectionMeta.title || this.dom.collectionTitle.value,
+        description: payload.collectionMeta.description || this.dom.collectionDescription.value,
+        license: payload.collectionMeta.license || this.dom.collectionLicense.value,
+        publisher: payload.collectionMeta.publisher || this.dom.collectionPublisher.value,
+        language: payload.collectionMeta.language || this.dom.collectionLanguage.value,
+      });
     }
 
     if (Array.isArray(payload.assets)) {
@@ -2941,7 +3141,18 @@ class TimemapCollectorElement extends HTMLElement {
       this.dom.assetCount.textContent = 'No assets loaded.';
       const empty = document.createElement('div');
       empty.className = 'empty';
-      empty.textContent = 'Open Sources to add one or more storage-backed collections.';
+      if (this.state.selectedCollectionId !== 'all') {
+        empty.textContent = 'This collection is empty. Drag and drop images to add items, or click Add images.';
+      } else {
+        empty.textContent = 'Create a new collection or open Sources to add storage-backed collections.';
+      }
+      const createBtn = document.createElement('button');
+      createBtn.className = 'btn btn-primary';
+      createBtn.type = 'button';
+      createBtn.textContent = 'New collection';
+      createBtn.addEventListener('click', () => this.openNewCollectionDialog());
+      empty.appendChild(document.createElement('br'));
+      empty.appendChild(createBtn);
       grid.appendChild(empty);
       return;
     }
@@ -2951,10 +3162,14 @@ class TimemapCollectorElement extends HTMLElement {
     if (visibleAssets.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'empty';
-      empty.textContent =
-        this.state.activeSourceFilter === 'all'
-          ? 'Added storage sources have no items.'
-          : 'No items for the selected storage source/collection filters.';
+      if (this.state.selectedCollectionId !== 'all') {
+        empty.textContent = 'This collection is empty. Drag and drop images to add items, or click Add images.';
+      } else {
+        empty.textContent =
+          this.state.activeSourceFilter === 'all'
+            ? 'Added storage sources have no items.'
+            : 'No items for the selected storage source/collection filters.';
+      }
       grid.appendChild(empty);
       return;
     }
@@ -3523,6 +3738,9 @@ class TimemapCollectorElement extends HTMLElement {
       title: this.dom.collectionTitle.value.trim() || COLLECTOR_CONFIG.defaultCollectionMeta.title,
       description:
         this.dom.collectionDescription.value.trim() || COLLECTOR_CONFIG.defaultCollectionMeta.description,
+      license: this.dom.collectionLicense.value.trim(),
+      publisher: this.dom.collectionPublisher.value.trim(),
+      language: this.dom.collectionLanguage.value.trim(),
     };
   }
 
@@ -3558,17 +3776,17 @@ class TimemapCollectorElement extends HTMLElement {
     const includedItems = this.state.assets
       .filter((item) => item.include !== false)
       .map((item) => this.toManifestItem(item));
-    const baseManifest = createManifest(collectionMeta, includedItems);
     return {
       ...baseFromCurrent,
-      ...baseManifest,
+      ...collectionMeta,
       items: includedItems,
     };
   }
 
   async generateManifest(options = {}) {
-    if (this.state.sources.length === 0) {
-      this.setStatus('Add at least one source before generating a manifest.', 'warn');
+    const collectionMeta = this.currentCollectionMeta();
+    if (!collectionMeta.id || !collectionMeta.title) {
+      this.setStatus('Create or complete collection metadata before generating a manifest.', 'warn');
       return null;
     }
 
