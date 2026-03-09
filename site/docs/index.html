@@ -4,14 +4,14 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>TimeMap Collector Documentation</title>
-		<link rel="stylesheet" href="../index.css" />
+		<link rel="stylesheet" href="../../index.css" />
 	</head>
 	<body>
 		<div class="site-header">
 			<div class="site-header-inner">
 				<div class="site-brand">TimeMap Collector</div>
 				<nav class="site-nav" aria-label="Primary navigation">
-					<a href="../">Home</a>
+					<a href="../../">Home</a>
 					<a href="./" class="is-active" aria-current="page">Documentation</a>
 					<a href="../demo/">Demo</a>
 				</nav>
@@ -28,7 +28,7 @@
 
 			<section>
 				<h2>1. Embedding</h2>
-				<pre><code>&lt;script type="module" src="/code/apps/collector-ui/src/index.js"&gt;&lt;/script&gt;
+				<pre><code>&lt;script type="module" src="/src/apps/collector/src/index.js"&gt;&lt;/script&gt;
 &lt;timemap-collector&gt;&lt;/timemap-collector&gt;</code></pre>
 				<ul>
 					<li>Custom element name: <code>timemap-collector</code></li>
@@ -40,7 +40,7 @@
 			<section>
 				<h2>2. SaaS Shell Layout</h2>
 				<ul>
-					<li>Header: title + actions for Sources and Manifest dialogs</li>
+					<li>Collector header: Sources + Publish + Register placeholder actions</li>
 					<li>Main workspace is height-bounded with split panes</li>
 					<li>Left pane: independently scrollable media card viewport</li>
 					<li>Right pane: independently scrollable metadata editor</li>
@@ -49,14 +49,14 @@
 			</section>
 
 			<section>
-				<h2>3. Source architecture in MVP</h2>
+				<h2>3. Collector storage model</h2>
 				<ul>
-					<li>Sources manager with connected-source list and add-source forms</li>
-					<li>Multiple read sources can be loaded into one workspace</li>
+					<li>Sources manager with connected storage-source list and add-source forms</li>
+					<li>Collector is focused on storage-backed collection management</li>
+					<li>Sources represent storage systems with collections per source (scaffolded where discovery is limited)</li>
 					<li>GitHub source (manifest-first import; inline item metadata save with PAT write permission)</li>
-					<li>Public URL source flow (read-only)</li>
-					<li>Example/local source flow</li>
-					<li>Disabled placeholders for Google Drive, S3, Wikimedia Commons, Internet Archive</li>
+					<li>Google Drive connected source (read-only import mode currently)</li>
+					<li>Registration flow placeholder available from Collector header</li>
 					<li>Merged asset browsing and source-aware selection</li>
 					<li>Source badges on cards and source filtering in the main workspace</li>
 					<li>Asset viewer dialog for large preview (View button or double-click)</li>
@@ -67,10 +67,19 @@
 			</section>
 
 			<section>
-				<h2>4. Live Component Instance</h2>
+				<h2>4. Browser app</h2>
+				<ul>
+					<li>Separate read-only app at <code>/src/apps/browser/</code></li>
+					<li>Loads collection manifests for public browsing</li>
+					<li>No publish or metadata write controls</li>
+				</ul>
+			</section>
+
+			<section>
+				<h2>5. Live Collector Instance</h2>
 				<timemap-collector></timemap-collector>
 			</section>
 		</main>
-		<script type="module" src="../code/apps/collector-ui/src/index.js"></script>
+		<script type="module" src="../../src/apps/collector/src/index.js"></script>
 	</body>
 </html>

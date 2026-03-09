@@ -12,8 +12,8 @@
 				<div class="site-brand">TimeMap Collector</div>
 				<nav class="site-nav" aria-label="Primary navigation">
 					<a href="./" class="is-active" aria-current="page">Home</a>
-					<a href="./docs/">Documentation</a>
-					<a href="./demo/">Demo</a>
+					<a href="./site/docs/">Documentation</a>
+					<a href="./site/demo/">Demo</a>
 				</nav>
 			</div>
 		</div>
@@ -26,25 +26,26 @@
 					editing lightweight metadata, and exporting <code>collection.json</code>.
 				</p>
 				<div class="chip-row" aria-label="MVP status chips">
-					<span class="chip ok">Local provider: working</span>
-					<span class="chip ok">Public URL provider: read-only working</span>
-					<span class="chip stub">GitHub provider: stub</span>
+					<span class="chip ok">Collector app: edit/publish/register-ready</span>
+					<span class="chip ok">Browser app: read-only browsing</span>
+					<span class="chip stub">Registration backend: placeholder</span>
 				</div>
 			</header>
 
 			<section>
 				<h2>Quick Entry Points</h2>
 				<div class="link-grid">
-					<a class="link-card" href="./demo/"><strong>Demo</strong><br />Full component integration page.</a>
-					<a class="link-card" href="./docs/"><strong>Documentation</strong><br />Embedding and MVP behavior docs.</a>
-					<a class="link-card" href="./code/apps/collector-ui/"><strong>Collector App Entry</strong><br />Direct element host page.</a>
-					<a class="link-card" href="./examples/test-collection/"><strong>Example dataset</strong><br />Fixture data for local mode.</a>
+					<a class="link-card" href="./site/demo/"><strong>Demo</strong><br />Full component integration page.</a>
+					<a class="link-card" href="./site/docs/"><strong>Documentation</strong><br />Embedding and app behavior docs.</a>
+					<a class="link-card" href="./src/apps/collector/"><strong>Collector App</strong><br />Edit, publish, and register-ready workflow.</a>
+					<a class="link-card" href="./src/apps/browser/"><strong>Browser App</strong><br />Read-only public collection browsing.</a>
+					<a class="link-card" href="./site/examples/test-collection/"><strong>Example dataset</strong><br />Fixture data for local mode.</a>
 				</div>
 			</section>
 
 			<section>
 				<h2>Embed Snippet</h2>
-				<pre><code>&lt;script type="module" src="/code/apps/collector-ui/src/index.js"&gt;&lt;/script&gt;
+				<pre><code>&lt;script type="module" src="/src/apps/collector/src/index.js"&gt;&lt;/script&gt;
 &lt;timemap-collector&gt;&lt;/timemap-collector&gt;</code></pre>
 			</section>
 
@@ -53,7 +54,6 @@
 				<timemap-collector></timemap-collector>
 			</section>
 		</main>
-		<script type="module" src="./code/apps/collector-ui/src/index.js"></script>
-		<script type="module" src="./src/index.js"></script>
+		<script type="module" src="./src/apps/collector/src/index.js"></script>
 	</body>
 </html>

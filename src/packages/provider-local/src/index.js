@@ -10,7 +10,7 @@ import {
 
 export function createLocalProvider() {
   let connected = false;
-  let sourcePath = '/examples/test-collection/collection.json';
+  let sourcePath = '/site/examples/test-collection/collection.json';
   let collection = null;
   let itemsById = new Map();
 

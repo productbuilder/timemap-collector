@@ -1,5 +1,5 @@
 export const COLLECTOR_CONFIG = {
-  defaultLocalManifestPath: '/examples/test-collection/collection.json',
+  defaultLocalManifestPath: '/site/examples/test-collection/collection.json',
   defaultCollectionMeta: {
     id: 'col-mvp-export',
     title: 'TimeMap Collector Export',

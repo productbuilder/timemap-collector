@@ -33,6 +33,7 @@ class TimemapCollectorElement extends HTMLElement {
       viewerItemId: null,
       selectedProviderId: 'github',
       activeSourceFilter: 'all',
+      selectedCollectionId: 'all',
       publishDestination: null,
       manifest: null,
     };
@@ -52,16 +53,31 @@ class TimemapCollectorElement extends HTMLElement {
     };
 
     this.providerCatalog = [
-      this.providerFactories.github.getDescriptor(),
-      this.providerFactories.gdrive.getDescriptor(),
-      this.providerFactories['public-url'].getDescriptor(),
+      {
+        ...this.providerFactories.github.getDescriptor(),
+        label: 'GitHub repository',
+        description: 'Writable storage source for managed collections (recommended).',
+      },
+      {
+        ...this.providerFactories.gdrive.getDescriptor(),
+        label: 'Google Drive',
+        description: 'Connected Drive source (currently read-only import for managed collections).',
+      },
       {
         id: 's3',
         label: 'S3-compatible storage',
         category: 'external',
         enabled: false,
         statusLabel: 'Coming soon',
-        description: 'Use S3 buckets and prefixes as collection sources.',
+        description: 'Writable object storage source for institutional collection management.',
+      },
+      {
+        id: 'wordpress',
+        label: 'WordPress / CMS',
+        category: 'external',
+        enabled: false,
+        statusLabel: 'Planned',
+        description: 'Manage collections linked to CMS-managed media libraries.',
       },
       {
         id: 'wikimedia',
@@ -89,8 +105,8 @@ class TimemapCollectorElement extends HTMLElement {
 
   connectedCallback() {
     this.bindEvents();
-    this.setStatus('No sources added yet.', 'neutral');
-    this.setConnectionStatus('No sources connected.', 'neutral');
+    this.setStatus('No storage sources connected yet.', 'neutral');
+    this.setConnectionStatus('No storage sources connected.', 'neutral');
     this.renderCapabilities(this.providerFactories.local.getCapabilities());
     this.renderProviderCatalog();
     this.setSelectedProvider('github');
@@ -783,7 +799,8 @@ class TimemapCollectorElement extends HTMLElement {
           </div>
           <div class="top-actions">
             <button class="btn" id="openProviderBtn" type="button">Sources</button>
-            <button class="btn" id="openManifestBtn" type="button">Manifest</button>
+            <button class="btn" id="openPublishBtn" type="button">Publish</button>
+            <button class="btn" id="openRegisterBtn" type="button">Register</button>
           </div>
         </header>
 
@@ -793,7 +810,10 @@ class TimemapCollectorElement extends HTMLElement {
               <h2 class="panel-title">Collection viewport</h2>
               <div class="panel-header-meta">
                 <select id="sourceFilter" class="source-filter" aria-label="Filter assets by source">
-                  <option value="all">All sources</option>
+                  <option value="all">All storage sources</option>
+                </select>
+                <select id="collectionFilter" class="source-filter" aria-label="Choose active collection">
+                  <option value="all">All collections</option>
                 </select>
                 <p id="assetCount" class="panel-subtext">No assets loaded.</p>
               </div>
@@ -853,13 +873,13 @@ class TimemapCollectorElement extends HTMLElement {
           <div class="dialog-body">
             <div class="source-manager">
               <div>
-                <p class="config-section-title">Connected sources</p>
+                <p class="config-section-title">Connected storage sources</p>
                 <div id="sourceList" class="source-list"></div>
                 <button class="btn storage-help-btn" id="openStorageOptionsBtn" type="button">Storage options</button>
               </div>
               <div class="provider-layout">
                 <div>
-                <p class="config-section-title">Add source</p>
+                <p class="config-section-title">Add storage source</p>
                 <div id="providerCatalog" class="provider-list"></div>
               </div>
               <div id="providerConfig" class="provider-config">
@@ -914,7 +934,7 @@ class TimemapCollectorElement extends HTMLElement {
                 </div>
 
                 <div class="dialog-actions">
-                  <button class="btn btn-primary" id="connectBtn" type="button">Add source</button>
+                  <button class="btn btn-primary" id="connectBtn" type="button">Add storage source</button>
                 </div>
               </div>
             </div>
@@ -925,11 +945,11 @@ class TimemapCollectorElement extends HTMLElement {
         </div>
       </dialog>
 
-      <dialog id="manifestDialog" aria-label="Manifest export">
+      <dialog id="publishDialog" aria-label="Publish collection">
         <div class="dialog-shell">
           <div class="dialog-header">
-            <h2 class="dialog-title">Manifest export</h2>
-            <button class="btn" data-close="manifestDialog" type="button">Close</button>
+            <h2 class="dialog-title">Publish collection</h2>
+            <button class="btn" data-close="publishDialog" type="button">Close</button>
           </div>
           <div class="dialog-body">
             <div class="field-row"><label for="collectionId">Collection ID</label><input id="collectionId" type="text" /></div>
@@ -941,6 +961,21 @@ class TimemapCollectorElement extends HTMLElement {
               <button class="btn" id="downloadManifestBtn" type="button">Download</button>
             </div>
             <pre id="manifestPreview"></pre>
+          </div>
+        </div>
+      </dialog>
+
+      <dialog id="registerDialog" aria-label="Collection registration">
+        <div class="dialog-shell">
+          <div class="dialog-header">
+            <h2 class="dialog-title">Register collection</h2>
+            <button class="btn" data-close="registerDialog" type="button">Close</button>
+          </div>
+          <div class="dialog-body">
+            <div class="empty">
+              Collection registration will be added here.
+              Collector will later register published collections with the registry.
+            </div>
           </div>
         </div>
       </dialog>
@@ -958,7 +993,7 @@ class TimemapCollectorElement extends HTMLElement {
                 <li><strong>GitHub</strong>: strong for public manifests, versioning, and easy Collector integration.</li>
                 <li><strong>Cloudflare Pages / R2</strong>: excellent static/browser delivery for JSON + media.</li>
                 <li><strong>S3-compatible storage</strong>: robust long-term hosting for technical teams and institutions.</li>
-                <li><strong>Static website hosting</strong>: simple and dependable for open `collection.json` publishing.</li>
+                <li><strong>Static website hosting</strong>: simple and dependable for open <code>collection.json</code> publishing.</li>
               </ul>
             </section>
 
@@ -1113,10 +1148,12 @@ class TimemapCollectorElement extends HTMLElement {
     this.dom = {
       statusText: root.getElementById('statusText'),
       openProviderBtn: root.getElementById('openProviderBtn'),
-      openManifestBtn: root.getElementById('openManifestBtn'),
+      openPublishBtn: root.getElementById('openPublishBtn'),
+      openRegisterBtn: root.getElementById('openRegisterBtn'),
       providerDialog: root.getElementById('providerDialog'),
+      publishDialog: root.getElementById('publishDialog'),
+      registerDialog: root.getElementById('registerDialog'),
       storageOptionsDialog: root.getElementById('storageOptionsDialog'),
-      manifestDialog: root.getElementById('manifestDialog'),
       assetViewerDialog: root.getElementById('assetViewerDialog'),
       closeViewerBtn: root.getElementById('closeViewerBtn'),
       viewerTitle: root.getElementById('viewerTitle'),
@@ -1128,6 +1165,7 @@ class TimemapCollectorElement extends HTMLElement {
       sourceList: root.getElementById('sourceList'),
       openStorageOptionsBtn: root.getElementById('openStorageOptionsBtn'),
       sourceFilter: root.getElementById('sourceFilter'),
+      collectionFilter: root.getElementById('collectionFilter'),
       providerConfigTitle: root.getElementById('providerConfigTitle'),
       githubConfig: root.getElementById('githubConfig'),
       githubToken: root.getElementById('githubToken'),
@@ -1196,7 +1234,8 @@ class TimemapCollectorElement extends HTMLElement {
 
     this.dom.openProviderBtn.addEventListener('click', () => this.openDialog(this.dom.providerDialog));
     this.dom.openStorageOptionsBtn.addEventListener('click', () => this.openDialog(this.dom.storageOptionsDialog));
-    this.dom.openManifestBtn.addEventListener('click', () => this.openDialog(this.dom.manifestDialog));
+    this.dom.openPublishBtn.addEventListener('click', () => this.openDialog(this.dom.publishDialog));
+    this.dom.openRegisterBtn.addEventListener('click', () => this.openDialog(this.dom.registerDialog));
     this.dom.closeViewerBtn.addEventListener('click', () => this.closeViewer());
     this.dom.assetViewerDialog.addEventListener('close', () => {
       this.state.viewerItemId = null;
@@ -1206,6 +1245,17 @@ class TimemapCollectorElement extends HTMLElement {
     });
     this.dom.sourceFilter.addEventListener('change', () => {
       this.state.activeSourceFilter = this.dom.sourceFilter.value || 'all';
+      this.state.selectedCollectionId = 'all';
+      const visible = this.getVisibleAssets();
+      if (this.state.selectedItemId && !visible.some((item) => item.workspaceId === this.state.selectedItemId)) {
+        this.state.selectedItemId = visible[0]?.workspaceId || null;
+      }
+      this.renderCollectionFilter();
+      this.renderAssets();
+      this.renderEditor();
+    });
+    this.dom.collectionFilter.addEventListener('change', () => {
+      this.state.selectedCollectionId = this.dom.collectionFilter.value || 'all';
       const visible = this.getVisibleAssets();
       if (this.state.selectedItemId && !visible.some((item) => item.workspaceId === this.state.selectedItemId)) {
         this.state.selectedItemId = visible[0]?.workspaceId || null;
@@ -1464,10 +1514,14 @@ class TimemapCollectorElement extends HTMLElement {
   }
 
   getVisibleAssets() {
-    if (this.state.activeSourceFilter === 'all') {
-      return this.state.assets;
+    let visible = this.state.assets;
+    if (this.state.activeSourceFilter !== 'all') {
+      visible = visible.filter((item) => item.sourceId === this.state.activeSourceFilter);
     }
-    return this.state.assets.filter((item) => item.sourceId === this.state.activeSourceFilter);
+    if (this.state.selectedCollectionId !== 'all') {
+      visible = visible.filter((item) => item.collectionId === this.state.selectedCollectionId);
+    }
+    return visible;
   }
 
   renderSourceFilter() {
@@ -1476,7 +1530,7 @@ class TimemapCollectorElement extends HTMLElement {
 
     const allOption = document.createElement('option');
     allOption.value = 'all';
-    allOption.textContent = 'All sources';
+    allOption.textContent = 'All storage sources';
     this.dom.sourceFilter.appendChild(allOption);
 
     for (const source of this.state.sources) {
@@ -1489,6 +1543,34 @@ class TimemapCollectorElement extends HTMLElement {
     const stillExists = previous === 'all' || this.state.sources.some((entry) => entry.id === previous);
     this.state.activeSourceFilter = stillExists ? previous : 'all';
     this.dom.sourceFilter.value = this.state.activeSourceFilter;
+    this.renderCollectionFilter();
+  }
+
+  renderCollectionFilter() {
+    const previous = this.state.selectedCollectionId || 'all';
+    this.dom.collectionFilter.innerHTML = '';
+
+    const allOption = document.createElement('option');
+    allOption.value = 'all';
+    allOption.textContent = 'All collections';
+    this.dom.collectionFilter.appendChild(allOption);
+
+    let collections = [];
+    if (this.state.activeSourceFilter !== 'all') {
+      const activeSource = this.getSourceById(this.state.activeSourceFilter);
+      collections = activeSource?.collections || [];
+    }
+
+    for (const collection of collections) {
+      const option = document.createElement('option');
+      option.value = collection.id;
+      option.textContent = collection.title || collection.id;
+      this.dom.collectionFilter.appendChild(option);
+    }
+
+    const stillExists = previous === 'all' || collections.some((entry) => entry.id === previous);
+    this.state.selectedCollectionId = stillExists ? previous : 'all';
+    this.dom.collectionFilter.value = this.state.selectedCollectionId;
   }
 
   formatSourceBadge(item) {
@@ -1507,7 +1589,7 @@ class TimemapCollectorElement extends HTMLElement {
     if (this.state.sources.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'empty';
-      empty.textContent = 'No sources added yet.';
+      empty.textContent = 'No storage sources added yet.';
       list.appendChild(empty);
       return;
     }
@@ -1560,7 +1642,10 @@ class TimemapCollectorElement extends HTMLElement {
       const countPill = document.createElement('span');
       countPill.className = 'pill';
       countPill.textContent = `${source.itemCount || 0} items`;
-      meta.append(statusPill, countPill);
+      const collectionPill = document.createElement('span');
+      collectionPill.className = 'pill';
+      collectionPill.textContent = `${source.collections?.length || 0} collections`;
+      meta.append(statusPill, countPill, collectionPill);
 
       const actions = document.createElement('div');
       actions.className = 'source-card-actions';
@@ -1804,12 +1889,12 @@ class TimemapCollectorElement extends HTMLElement {
         capabilities: entry.capabilities || this.providerFactories[entry.providerId]?.getCapabilities?.() || {},
         status: (() => {
           if (entry.providerId === 'github') {
-            return 'Remembered source. Token is not stored; re-enter token if repository requires it.';
+            return 'Remembered storage source. Token is not stored; re-enter token if repository requires it.';
           }
           if (entry.providerId === 'gdrive' && entry.config?.sourceMode === 'auth-manifest-file') {
-            return 'Remembered source. Google access token is session-only; reconnect authentication before refresh.';
+            return 'Remembered storage source. Google access token is session-only; reconnect authentication before refresh.';
           }
-          return 'Remembered source. Click Refresh to reconnect.';
+          return 'Remembered storage source. Click Refresh to reconnect.';
         })(),
         authMode:
           entry.providerId === 'github'
@@ -1828,8 +1913,8 @@ class TimemapCollectorElement extends HTMLElement {
     this.state.selectedItemId = null;
     this.state.activeSourceFilter = 'all';
 
-    this.setStatus(`Restored ${restored.length} remembered source definitions.`, 'neutral');
-    this.setConnectionStatus('Remembered sources loaded. Refresh sources to reconnect.', 'neutral');
+    this.setStatus(`Restored ${restored.length} remembered storage source definitions.`, 'neutral');
+    this.setConnectionStatus('Remembered storage sources loaded. Refresh to reconnect.', 'neutral');
     this.renderSourcesList();
     this.renderSourceFilter();
     this.renderAssets();
@@ -1857,8 +1942,39 @@ class TimemapCollectorElement extends HTMLElement {
         sourceLabel: source.label,
         sourceDisplayLabel: source.displayLabel || source.label,
         providerId: source.providerId,
+        collectionId: item.collectionId || null,
+        collectionLabel: item.collectionLabel || '',
       };
     });
+  }
+
+  buildCollectionsForSource(source, normalizedAssets) {
+    const grouped = new Map();
+    for (const item of normalizedAssets) {
+      const collectionId = (item.collectionId || '').trim();
+      const collectionLabel = (item.collectionLabel || '').trim();
+      if (!collectionId) {
+        continue;
+      }
+      if (!grouped.has(collectionId)) {
+        grouped.set(collectionId, {
+          id: collectionId,
+          title: collectionLabel || collectionId,
+        });
+      }
+    }
+
+    if (grouped.size > 0) {
+      return Array.from(grouped.values());
+    }
+
+    const fallbackId = `${source.id}::default-collection`;
+    return [
+      {
+        id: fallbackId,
+        title: source.displayLabel || source.providerLabel || 'Default collection',
+      },
+    ];
   }
 
   mergeSourceAssets(sourceId, nextItems) {
@@ -1995,7 +2111,7 @@ class TimemapCollectorElement extends HTMLElement {
       this.dom.assetCount.textContent = 'No assets loaded.';
       const empty = document.createElement('div');
       empty.className = 'empty';
-      empty.textContent = 'Open Sources to add one or more readable datasets.';
+      empty.textContent = 'Open Sources to add one or more storage-backed collections.';
       grid.appendChild(empty);
       return;
     }
@@ -2007,8 +2123,8 @@ class TimemapCollectorElement extends HTMLElement {
       empty.className = 'empty';
       empty.textContent =
         this.state.activeSourceFilter === 'all'
-          ? 'Added sources have no assets.'
-          : 'No assets for the selected source filter.';
+          ? 'Added storage sources have no items.'
+          : 'No items for the selected storage source/collection filters.';
       grid.appendChild(empty);
       return;
     }
@@ -2246,8 +2362,8 @@ class TimemapCollectorElement extends HTMLElement {
     const selectedProvider = this.providerCatalog.find((entry) => entry.id === providerId);
 
     if (!providerFactory || selectedProvider?.enabled === false) {
-      this.setConnectionStatus('Selected source type is not yet available.', false);
-      this.setStatus('Selected source type is not yet available.', 'warn');
+      this.setConnectionStatus('Selected storage source type is not yet available.', false);
+      this.setStatus('Selected storage source type is not yet available.', 'warn');
       return;
     }
 
@@ -2312,19 +2428,30 @@ class TimemapCollectorElement extends HTMLElement {
         provider,
         needsReconnect: false,
         needsCredentials: providerId === 'gdrive' && config.sourceMode === 'auth-manifest-file' ? !(config.accessToken || '').trim() : false,
+        collections: [],
+        selectedCollectionId: null,
       };
 
       const normalized = this.normalizeSourceAssets(source, loaded);
+      const collections = this.buildCollectionsForSource(source, normalized);
+      const defaultCollectionId = collections[0]?.id || null;
+      const normalizedWithCollections = normalized.map((item) => ({
+        ...item,
+        collectionId: item.collectionId || defaultCollectionId,
+        collectionLabel: item.collectionLabel || collections.find((entry) => entry.id === (item.collectionId || defaultCollectionId))?.title || '',
+      }));
+      source.collections = collections;
+      source.selectedCollectionId = defaultCollectionId;
       this.state.sources = [...this.state.sources, source];
-      this.state.assets = [...this.state.assets, ...normalized];
+      this.state.assets = [...this.state.assets, ...normalizedWithCollections];
       this.state.manifest = null;
       this.dom.manifestPreview.textContent = '{}';
 
       if (!this.state.selectedItemId) {
-        this.state.selectedItemId = normalized[0]?.workspaceId || null;
+        this.state.selectedItemId = normalizedWithCollections[0]?.workspaceId || null;
       }
 
-      this.setStatus(`Added source ${source.label} (${loaded.length} assets).`, 'ok');
+      this.setStatus(`Added storage source ${source.label} (${loaded.length} items).`, 'ok');
       this.renderSourcesList();
       this.renderSourceFilter();
       this.renderAssets();
@@ -2371,7 +2498,7 @@ class TimemapCollectorElement extends HTMLElement {
       this.dom.localPathInput.value = source.config.path || COLLECTOR_CONFIG.defaultLocalManifestPath;
     }
 
-    this.setConnectionStatus(`Inspecting source: ${source.label}`, true);
+    this.setConnectionStatus(`Inspecting storage source: ${source.label}`, true);
   }
 
   async refreshSource(sourceId) {
@@ -2382,7 +2509,7 @@ class TimemapCollectorElement extends HTMLElement {
 
     const providerFactory = this.providers[source.providerId];
     if (!providerFactory) {
-      this.setStatus(`Source type for ${source.label} is unavailable.`, 'warn');
+      this.setStatus(`Storage source type for ${source.label} is unavailable.`, 'warn');
       return;
     }
 
@@ -2438,13 +2565,27 @@ class TimemapCollectorElement extends HTMLElement {
                 sourceMode: source.config?.sourceMode || 'public-manifest-url',
               }
             : source.config,
+        collections: source.collections || [],
+        selectedCollectionId: source.selectedCollectionId || null,
         needsReconnect: false,
         needsCredentials: false,
       };
       const normalized = this.normalizeSourceAssets(updatedSource, loaded);
+      const collections = this.buildCollectionsForSource(updatedSource, normalized);
+      const defaultCollectionId = collections[0]?.id || null;
+      const normalizedWithCollections = normalized.map((item) => ({
+        ...item,
+        collectionId: item.collectionId || defaultCollectionId,
+        collectionLabel: item.collectionLabel || collections.find((entry) => entry.id === (item.collectionId || defaultCollectionId))?.title || '',
+      }));
+      updatedSource.collections = collections;
+      updatedSource.selectedCollectionId =
+        (updatedSource.selectedCollectionId && collections.some((entry) => entry.id === updatedSource.selectedCollectionId))
+          ? updatedSource.selectedCollectionId
+          : defaultCollectionId;
 
       this.state.sources = this.state.sources.map((entry) => (entry.id === sourceId ? updatedSource : entry));
-      this.mergeSourceAssets(sourceId, normalized);
+      this.mergeSourceAssets(sourceId, normalizedWithCollections);
 
       if (this.state.selectedItemId && !this.state.assets.some((item) => item.workspaceId === this.state.selectedItemId)) {
         this.state.selectedItemId = this.getVisibleAssets()[0]?.workspaceId || this.state.assets[0]?.workspaceId || null;
@@ -2455,8 +2596,8 @@ class TimemapCollectorElement extends HTMLElement {
         this.renderViewer();
       }
 
-      this.setConnectionStatus(`Refreshed source ${updatedSource.label}.`, true);
-      this.setStatus(`Refreshed source ${updatedSource.label}.`, 'ok');
+      this.setConnectionStatus(`Refreshed storage source ${updatedSource.label}.`, true);
+      this.setStatus(`Refreshed storage source ${updatedSource.label}.`, 'ok');
       this.renderSourcesList();
       this.renderSourceFilter();
       this.renderAssets();
@@ -2496,10 +2637,10 @@ class TimemapCollectorElement extends HTMLElement {
     }
 
     if (this.state.sources.length === 0) {
-      this.setConnectionStatus('No sources connected.', 'neutral');
-      this.setStatus('No sources connected.', 'neutral');
+      this.setConnectionStatus('No storage sources connected.', 'neutral');
+      this.setStatus('No storage sources connected.', 'neutral');
     } else {
-      this.setStatus(`Removed source ${source.label}.`, 'ok');
+      this.setStatus(`Removed storage source ${source.label}.`, 'ok');
     }
 
     this.state.manifest = null;
@@ -2531,7 +2672,7 @@ class TimemapCollectorElement extends HTMLElement {
       const includedItems = this.state.assets
         .filter((item) => item.include !== false)
         .map((item) => {
-          const { workspaceId, sourceId, sourceLabel, providerId, sourceAssetId, ...manifestItem } = item;
+          const { workspaceId, sourceId, sourceLabel, providerId, sourceAssetId, collectionId, collectionLabel, ...manifestItem } = item;
           return manifestItem;
         });
 

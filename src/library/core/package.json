@@ -1,0 +1,7 @@
+{
+  "name": "@timemap/library-core",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Minimal shared core utilities for TimeMap apps."
+}
