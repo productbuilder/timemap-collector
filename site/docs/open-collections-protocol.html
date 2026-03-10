@@ -14,7 +14,7 @@
 					<a href="../../">Home</a>
 					<a href="./open-collections-protocol.html" class="is-active" aria-current="page">Protocol</a>
 					<a href="../tools/">Tools</a>
-					<a href="../storage/">Storage</a>
+					<a href="../storage/">Storage Providers</a>
 					<a href="./">Documentation</a>
 					<a href="../demo/">Demo</a>
 				</nav>
@@ -196,8 +196,10 @@
 					Different tools can operate on the same published resources.
 				</p>
 				<p>
-					Collection Manager and Collection Browser are ecosystem tools and components.
-					They are not the protocol itself, but they make protocol adoption easier in practice.
+					Typical ecosystem tools include <strong>Collection Manager</strong> for preparing and publishing collections,
+					<strong>Registrator</strong> for registration or validation flows, <strong>Indexer</strong> for discovery and search,
+					and <strong>Collection Browser</strong> or <strong>TimeMap</strong> for public exploration and presentation.
+					Some of these tools can also be embedded as reusable components inside other websites, portals, and applications.
 				</p>
 				<ul>
 					<li><strong>Publishing layer:</strong> manifests, item files, and media published over HTTP.</li>
@@ -205,11 +207,6 @@
 					<li><strong>Discovery layer:</strong> DCD files, registries, and indexers that discover and catalog collections.</li>
 					<li><strong>Presentation layer:</strong> browsers, viewers, timelines, and other end-user applications.</li>
 				</ul>
-				<p>
-					Typical ecosystem actors include <strong>Collection Manager</strong> (helps people publish), <strong>Registrator</strong>
-					(registers/curates discovered endpoints), <strong>Indexer</strong> (crawls and builds search), and
-					<strong>Collection Browser</strong> and tools such as <strong>TimeMap</strong> for public exploration.
-				</p>
 				<pre><code>Domain
   ├─ /.well-known/collections.json (DCD)
   └─ collection.json
