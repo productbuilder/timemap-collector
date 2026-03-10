@@ -232,6 +232,28 @@ th {
 	background: #bae6fd;
 }
 
+
+.docs-page :is(header, section) {
+	display: grid;
+	gap: 0.75rem;
+}
+
+.docs-page :is(header, section) > :is(h1, h2, h3, p, ul, ol, .link-grid) {
+	max-width: 72ch;
+}
+
+.docs-page :is(header, section) > :is(pre, table, .table-scroll, .docs-embed-block) {
+	max-width: 100%;
+}
+
+.docs-page .docs-utility-section > :is(h1, h2, h3, p) {
+	max-width: 72ch;
+}
+
+.docs-page .docs-embed-block {
+	overflow-x: auto;
+}
+
 @media (max-width: 760px) {
 	.site-header-inner {
 		padding: 0.65rem 0.7rem;
