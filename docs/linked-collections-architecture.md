@@ -498,4 +498,166 @@ By following these principles the ecosystem can scale naturally across instituti
 
 ---
 
+# Why Collections Are Not Databases
+
+A key design principle of LinkedCollections is that collections are **published documents**, not records inside a centralized database.
+
+This distinction is important for scalability and interoperability.
+
+Traditional systems often work like this:
+
+```
+application
+↓
+database
+↓
+API
+↓
+clients
+```
+
+In this model:
+
+- data lives inside one system
+- access requires a specific API
+- other systems depend on the application
+
+This architecture creates tight coupling and limits portability.
+
+---
+
+# The Web Model
+
+The Web works differently.
+
+Instead of storing content in centralized databases, the Web publishes **documents at URLs**.
+
+Example:
+
+```
+https://example.org/index.html
+```
+
+A browser can fetch this document without knowing anything about the server implementation.
+
+The document is the interface.
+
+Search engines can crawl it, cache it, and index it.
+
+---
+
+# LinkedCollections Uses the Same Model
+
+LinkedCollections treats collections as **published documents**.
+
+Example:
+
+```
+https://example.org/collections/harbor/collection.json
+```
+
+This manifest is the public interface to the collection.
+
+Applications interact with collections by fetching the manifest and following the links it contains.
+
+This means collections can be:
+
+- hosted anywhere
+- mirrored
+- cached
+- indexed
+- reused
+
+without requiring access to a central service.
+
+---
+
+# Advantages of Document-Based Collections
+
+This model provides several benefits.
+
+## Portability
+
+Collections are stored as directories.
+
+Example:
+
+```
+collection/
+collection.json
+items/
+media/
+thumbs/
+```
+
+The directory can be moved between hosts without changing its structure.
+
+---
+
+## Interoperability
+
+Any system that understands the manifest format can read the collection.
+
+Examples:
+
+- Collector (authoring tool)
+- Browser (viewer)
+- Indexer (search)
+- visualization tools
+
+No specific backend service is required.
+
+---
+
+## Resilience
+
+Because collections are static resources:
+
+- they can be cached by CDNs
+- they can be mirrored
+- they remain usable even if the original application disappears
+
+This mirrors the resilience of the Web itself.
+
+---
+
+# Databases Still Have a Role
+
+Databases can still be used internally by tools such as:
+
+- indexers
+- search services
+- editing environments
+
+However these systems should treat collections as **external published documents**, not as their primary storage format.
+
+In other words:
+
+```
+collection.json is the source of truth
+```
+
+not a database table.
+
+---
+
+# Guiding Principle
+
+The system should always prefer:
+
+- publishing documents
+- linking resources
+- indexing externally
+
+over:
+
+- centralized storage
+- tightly coupled APIs
+- proprietary data formats
+
+This keeps the ecosystem open, portable, and scalable.
+
+
+---
+
 End of document.
