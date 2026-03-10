@@ -808,3 +808,145 @@ This principle allows the system to scale while remaining simple.
 ---
 
 End of document.
+
+---
+
+# LinkedCollections as a Web Protocol for Collections
+
+LinkedCollections can be understood as a lightweight protocol for publishing and linking collections on the Web.
+
+The design intentionally mirrors the architecture that made the World Wide Web successful.
+
+Instead of creating a centralized platform for collections, LinkedCollections defines a simple structure that allows collections to be published anywhere and discovered by tools.
+
+---
+
+# The Web Analogy
+
+The architecture closely follows the structure of the Web.
+
+| Web | LinkedCollections |
+|----|----|
+| Website | Collection |
+| index.html | collection.json |
+| Web page | Item |
+| Image/file | Media asset |
+| Hyperlink | Reference between items or collections |
+| Search engine | Indexer |
+
+Just as a browser starts with `index.html`, a collection-aware application starts with `collection.json`.
+
+---
+
+# A Protocol, Not a Platform
+
+LinkedCollections is not intended to be a centralized service.
+
+Instead it defines a simple protocol for describing collections.
+
+Any tool that understands the protocol can interact with collections.
+
+Examples of compatible tools include:
+
+- Collector (authoring tool)
+- Browser (collection viewer)
+- Indexer (search and discovery)
+- visualization tools
+- data pipelines
+
+This approach avoids vendor lock-in and allows multiple systems to coexist.
+
+---
+
+# Publishing Collections
+
+A collection is published by placing a directory on a web server.
+
+Example:
+
+```
+collection/
+collection.json
+items/
+media/
+thumbs/
+```
+
+Once the manifest is accessible via HTTP, the collection becomes discoverable.
+
+No special server software is required.
+
+---
+
+# Discovery Through Indexing
+
+Just as search engines crawl the Web, indexers can discover collections.
+
+The process typically follows these steps:
+
+```
+seed collection URLs
+↓
+fetch collection.json
+↓
+extract items
+↓
+extract metadata
+↓
+build search indexes
+```
+
+This enables global discovery without requiring centralized storage.
+
+---
+
+# Linking Collections
+
+Collections can reference other collections.
+
+Examples include:
+
+- aggregating collections from multiple institutions
+- referencing shared media
+- linking related objects across collections
+
+Example relationship:
+
+```
+collection A → references item in collection B
+collection C → aggregates items from A and B
+```
+
+This creates a distributed network of collections.
+
+---
+
+# Extensible Ecosystem
+
+Because the system is based on simple web standards, it can evolve over time.
+
+Possible extensions include:
+
+- IIIF integration for image delivery
+- JSON-LD export for Linked Data interoperability
+- annotation layers
+- domain-specific schemas
+
+These features can be layered on top without breaking the basic collection model.
+
+---
+
+# Core Idea
+
+The central idea of LinkedCollections is simple:
+
+collections behave like websites.
+
+They are:
+
+- addressable by URLs
+- described by a manifest
+- composed of linked resources
+- discoverable through indexing
+
+By following these principles, LinkedCollections allows collections to exist as first-class resources on the Web.
