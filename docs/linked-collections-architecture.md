@@ -263,4 +263,239 @@ These principles allow the ecosystem to remain:
 
 ---
 
+## Web Design Principles That Inspired LinkedCollections
+
+LinkedCollections intentionally adopts several architectural ideas that made the Web successful.
+
+Understanding these principles helps guide design decisions across the platform.
+
+---
+
+# 1. Simple Entry Points
+
+On the Web, every website has a predictable entry point:
+
+```
+index.html
+```
+
+Browsers and crawlers know where to start.
+
+LinkedCollections follows the same idea:
+
+```
+collection.json
+```
+
+This file is the canonical entry point for a collection.
+
+From this single document a system can discover:
+
+- collection metadata
+- items
+- media resources
+- links to other collections
+
+Keeping the entry point simple allows tools to interact with collections without requiring custom APIs.
+
+---
+
+# 2. Addressable Resources
+
+One of the most important ideas of the Web is that **everything has a URL**.
+
+Examples:
+
+```
+https://example.org/
+https://example.org/page
+https://example.org/image.jpg
+```
+
+This makes resources:
+
+- linkable
+- shareable
+- cacheable
+- indexable
+
+LinkedCollections adopts the same principle.
+
+Examples:
+
+Collection
+
+```
+https://example.org/collections/harbor/
+```
+
+Item
+
+```
+https://example.org/collections/harbor/items/harbor-map
+```
+
+Media
+
+```
+https://example.org/collections/harbor/media/harbor-map.jpg
+```
+
+Stable URLs allow collections to interconnect across the web.
+
+---
+
+# 3. Decentralized Publishing
+
+The Web works because anyone can publish a website.
+
+There is no central server controlling all content.
+
+LinkedCollections follows the same model.
+
+Collections can be hosted anywhere:
+
+- GitHub
+- S3
+- Netlify
+- static hosting
+- institutional servers
+
+The system only requires that the collection manifest is reachable via HTTP.
+
+---
+
+# 4. Indexing for Discovery
+
+Search engines made the Web usable at large scale.
+
+They do this by:
+
+```
+crawl → index → search
+```
+
+LinkedCollections follows the same pattern.
+
+An indexer can:
+
+```
+discover collection URLs
+fetch collection.json
+extract items and metadata
+build search indexes
+```
+
+This allows discovery without requiring a centralized database.
+
+---
+
+# 5. Loose Coupling
+
+The Web succeeds because systems interact through simple protocols.
+
+A website does not need to know who will read it.
+
+Any browser can load any site.
+
+LinkedCollections uses the same idea.
+
+Tools only need to understand:
+
+- HTTP
+- JSON
+- the collection manifest format
+
+Examples of tools that can consume collections:
+
+- Collector (editor)
+- Browser (viewer)
+- Indexer (search)
+- TimeMap (visual explorer)
+
+Each tool remains independent.
+
+---
+
+# 6. Progressive Enhancement
+
+The Web allows simple content to work everywhere while richer features can be layered on top.
+
+LinkedCollections follows the same pattern.
+
+Basic collections only require:
+
+- collection.json
+- item references
+- media URLs
+
+More advanced features can be added later:
+
+- thumbnails
+- item detail files
+- annotations
+- IIIF integration
+- Linked Data / JSON-LD export
+
+Systems that do not understand these extensions can still read the basic collection.
+
+---
+
+# 7. Linking Instead of Copying
+
+The Web encourages linking resources instead of duplicating them.
+
+LinkedCollections allows collections to reference:
+
+- external media
+- items from other collections
+- institutional resources
+
+Example:
+
+```
+collection A → references item in collection B
+collection C → aggregates items from A and B
+```
+
+This creates a distributed graph of collections.
+
+---
+
+# 8. Portable Units
+
+Websites are often deployed as portable directories.
+
+LinkedCollections adopts the same model.
+
+```
+collection/
+collection.json
+items/
+media/
+thumbs/
+```
+
+This structure can be moved between hosts without changing its internal structure.
+
+---
+
+# Conclusion
+
+LinkedCollections is designed as a protocol for publishing collections that follows the same architectural principles that made the Web successful:
+
+- simple entry points
+- addressable resources
+- decentralized publishing
+- indexing for discovery
+- loose coupling
+- progressive enhancement
+- linking between resources
+- portable content units
+
+By following these principles the ecosystem can scale naturally across institutions and platforms.
+
+
+---
+
 End of document.
