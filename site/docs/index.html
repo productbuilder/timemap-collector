@@ -14,7 +14,7 @@
 					<a href="../../">Home</a>
 					<a href="./open-collections-protocol.html">Protocol</a>
 					<a href="../tools/">Tools</a>
-					<a href="../storage/">Storage</a>
+					<a href="../storage/">Storage Providers</a>
 					<a href="./" class="is-active" aria-current="page">Documentation</a>
 					<a href="../demo/">Demo</a>
 				</nav>
@@ -24,62 +24,76 @@
 			<header>
 				<h1>Documentation</h1>
 				<p>
-					Use this page to choose the right starting point. Begin with user-facing guides,
-					then go deeper into implementation details when needed.
+					This documentation helps you understand, publish, and integrate collections with
+					Open Collections Protocol.
 				</p>
-				<div class="link-grid" aria-label="Documentation entry points">
-					<a class="link-card" href="./open-collections-protocol.html"
-						><strong>Start here</strong><br />Get the big picture of Open Collections Protocol,
-						LinkedCollections, and Domain Collections Discovery (DCD).</a
-					>
-					<a class="link-card" href="../tools/"
-						><strong>Tools</strong><br />Learn what Collection Manager, Collection Browser,
-						Indexer, Registrator, and TimeMap do.</a
-					>
-					<a class="link-card" href="../storage/"
-						><strong>Storage providers</strong><br />Compare Git-based and S3-compatible hosting
-						options for publishing.</a
-					>
-					<a class="link-card" href="../demo/"
-						><strong>Publishing a collection</strong><br />Use the demo to test a practical workflow
-						with a sample collection.</a
-					>
-					<a class="link-card" href="../../src/apps/collector/"
-						><strong>Components and embedding</strong><br />Open the Collection Manager app and
-						component implementation entry points.</a
-					>
-					<a class="link-card" href="../../docs/linked-collections-architecture.md"
-						><strong>Technical reference</strong><br />Read deeper architecture and specification
-						documents in the project docs directory.</a
-					>
-				</div>
+				<p>
+					Some pages are written for collection owners and publishers. Others go deeper into
+					technical implementation, components, and integration.
+				</p>
 			</header>
 
 			<section>
-				<h2>Protocol overview</h2>
-				<p>
-					The protocol page explains the publishing model, discovery with DCD,
-					and how tools and components fit around the protocol without redefining it.
-				</p>
+				<h2>Start here</h2>
+				<p>If you are new to the project, start with these pages:</p>
+				<ul>
+					<li><strong>Protocol</strong> — understand the core publishing model</li>
+					<li><strong>Tools</strong> — see which tools help create, publish, and view collections</li>
+					<li><strong>Storage Providers</strong> — understand practical hosting options</li>
+					<li><strong>Demo</strong> — see the tools and components in action</li>
+				</ul>
+			</section>
+
+			<section>
+				<h2>Publishing a collection</h2>
+				<p>If your goal is to get a collection online, the most important ideas are:</p>
+				<ul>
+					<li>create a collection manifest</li>
+					<li>publish items and media at stable URLs</li>
+					<li>choose a storage provider that fits your needs</li>
+					<li>optionally publish a domain discovery file</li>
+				</ul>
 			</section>
 
 			<section>
 				<h2>Tools and components</h2>
+				<p>Open Collections Protocol is supported by tools such as:</p>
+				<ul>
+					<li>Collection Manager</li>
+					<li>Collection Browser</li>
+					<li>Indexer</li>
+					<li>Registrator</li>
+					<li>TimeMap</li>
+				</ul>
 				<p>
-					Collection Manager and Collection Browser can be used as standalone tools and
-					as embeddable web components. Integration details and API specifics belong in
-					technical implementation docs and app source references.
+					Collection Manager and Collection Browser can also be used as embeddable components
+					inside websites, portals, and other applications.
 				</p>
 			</section>
 
 			<section>
-				<h2>Technical implementation notes</h2>
-				<p>
-					For implementation details (including custom elements, embedding scripts,
-					and application internals), use the technical reference links above.
-				</p>
-				<pre><code>&lt;script type="module" src="/src/apps/collector/src/index.js"&gt;&lt;/script&gt;
-&lt;timemap-collector&gt;&lt;/timemap-collector&gt;</code></pre>
+				<h2>Technical documentation</h2>
+				<p>For technical readers, documentation should also cover:</p>
+				<ul>
+					<li>components and embedding</li>
+					<li>attribute/configuration API</li>
+					<li>manifest structure</li>
+					<li>provider integration</li>
+					<li>publishing workflows</li>
+					<li>examples and demos</li>
+				</ul>
+			</section>
+
+			<section>
+				<h2>Suggested entry points</h2>
+				<ul>
+					<li><a href="./open-collections-protocol.html">Protocol</a></li>
+					<li><a href="../tools/">Tools</a></li>
+					<li><a href="../storage/">Storage Providers</a></li>
+					<li><a href="../../src/apps/collector/">Components and Embedding</a></li>
+					<li><a href="../demo/">Publishing Guide</a></li>
+					<li><a href="../../docs/linked-collections-architecture.md">Technical Reference</a></li>
+				</ul>
 			</section>
 		</main>
 	</body>

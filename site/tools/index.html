@@ -14,7 +14,7 @@
 					<a href="../../">Home</a>
 					<a href="../docs/open-collections-protocol.html">Protocol</a>
 					<a href="./" class="is-active" aria-current="page">Tools</a>
-					<a href="../storage/">Storage</a>
+					<a href="../storage/">Storage Providers</a>
 					<a href="../docs/">Documentation</a>
 					<a href="../demo/">Demo</a>
 				</nav>
@@ -25,75 +25,176 @@
 			<header>
 				<h1>Tools</h1>
 				<p>
-					The protocol defines how collections are published on the web. These tools help
-					you create, publish, discover, and present those collections in day-to-day work.
+					Open Collections Protocol defines how collections can be published and discovered on the web.
+					The tools around it make that model practical.
 				</p>
 				<p>
-					For non-technical teams, this means practical workflows. For technical teams, the
-					same tools can be embedded and integrated into existing systems.
+					Some tools help people create and publish collections. Some help people view them.
+					Others help discover, register, or connect collections across domains and institutions.
+				</p>
+				<p>
+					Together, they form an open ecosystem: different tools can work with the same published
+					collections without depending on one central platform.
 				</p>
 			</header>
 
 			<section>
 				<h2>Collection Manager</h2>
+				<p><strong>Create, edit, organize, and publish collections</strong></p>
 				<p>
-					Collection Manager helps people assemble and edit collection metadata, connect
-					storage providers, and publish collection outputs.
+					Collection Manager is the main tool for preparing and publishing collections with
+					Open Collections Protocol.
 				</p>
+				<p>It helps collection owners:</p>
 				<ul>
-					<li>Use it as a standalone tool for collection publishing workflows.</li>
-					<li>Embed it as a web component inside websites, portals, apps, or collection systems.</li>
-					<li>Supports integration through a flexible attribute/configuration API for embedding contexts.</li>
+					<li>create or organize a collection</li>
+					<li>edit item metadata</li>
+					<li>manage media and assets</li>
+					<li>connect storage providers</li>
+					<li>generate and publish collection outputs</li>
 				</ul>
+				<p>
+					For non-technical users, Collection Manager is the practical entry point. It turns
+					the protocol into something you can actually work with.
+				</p>
+				<p>
+					For developers and integrators, Collection Manager is also an embeddable component.
+					That means it can be used not only as a standalone tool, but also inside websites,
+					portals, collection systems, and other applications.
+				</p>
+				<p>
+					Over time, it should support a flexible attribute and configuration API so it can adapt
+					to different publishing contexts and interface needs.
+				</p>
 			</section>
 
 			<section>
 				<h2>Collection Browser</h2>
+				<p><strong>View and explore published collections</strong></p>
 				<p>
-					Collection Browser provides a read-focused interface for exploring published
-					collections and item details.
+					Collection Browser is the viewing and exploration counterpart to Collection Manager.
 				</p>
+				<p>It helps people:</p>
 				<ul>
-					<li>Use it as a standalone viewer for public or internal audiences.</li>
-					<li>Embed it as a web component where you want collection browsing in an existing UI.</li>
-					<li>Supports a flexible attribute/configuration API for embedded experiences.</li>
+					<li>open a published collection</li>
+					<li>browse items and media</li>
+					<li>explore metadata</li>
+					<li>use collection views inside websites, portals, and public interfaces</li>
 				</ul>
+				<p>
+					Like Collection Manager, Collection Browser can work both as a standalone tool and as an
+					embeddable component.
+				</p>
+				<p>That makes it useful for:</p>
+				<ul>
+					<li>institutional websites</li>
+					<li>public collection portals</li>
+					<li>thematic exhibitions</li>
+					<li>regional or national aggregation sites</li>
+					<li>custom collection interfaces</li>
+				</ul>
+				<p>
+					Once a collection is published through the protocol, many different interfaces should be
+					able to present it.
+				</p>
 			</section>
 
 			<section>
 				<h2>Indexer</h2>
+				<p><strong>Discover and organize collections</strong></p>
 				<p>
-					Indexers crawl published manifests, item URLs, and media references so collections
-					can be searched, aggregated, and discovered across domains.
+					An Indexer finds published collections, reads their manifests, and helps make them
+					searchable and discoverable.
+				</p>
+				<p>Indexers can:</p>
+				<ul>
+					<li>crawl collection endpoints</li>
+					<li>follow domain discovery files</li>
+					<li>organize collections for search or aggregation</li>
+					<li>connect related collections across publishers</li>
+				</ul>
+				<p>
+					This is similar to how search engines work on the web: they do not own the websites they
+					index, but they help people find and navigate them.
 				</p>
 			</section>
 
 			<section>
 				<h2>Registrator</h2>
+				<p><strong>Register or announce collections</strong></p>
 				<p>
-					Registrator services help organizations announce and curate published collection
-					endpoints, improving visibility and trust across networks.
+					A Registrator helps publishers register, announce, validate, or curate collection
+					endpoints.
+				</p>
+				<p>Depending on the ecosystem, a Registrator might:</p>
+				<ul>
+					<li>register a collection or domain discovery endpoint</li>
+					<li>validate that a collection is published correctly</li>
+					<li>support curated registries</li>
+					<li>make collections easier to find and trust</li>
+				</ul>
+				<p>
+					This is especially useful when collections need to be gathered across institutions,
+					communities, or thematic networks.
 				</p>
 			</section>
 
 			<section>
 				<h2>TimeMap</h2>
+				<p><strong>Explore collections through time and context</strong></p>
 				<p>
-					TimeMap turns published collection data into timeline and map exploration views,
-					helping users understand historical and geographic context.
+					TimeMap is a presentation layer built on top of published collections.
+				</p>
+				<p>It can help people explore material through:</p>
+				<ul>
+					<li>time</li>
+					<li>place</li>
+					<li>theme</li>
+					<li>cross-collection relationships</li>
+				</ul>
+				<p>
+					Where Collection Browser is a general-purpose browsing interface, TimeMap can become
+					a more interpretive or exploratory interface built on the same published resources.
 				</p>
 			</section>
 
 			<section>
-				<h2>How tools relate to the protocol</h2>
+				<h2>Tools and components</h2>
+				<p><strong>Standalone tools and embeddable building blocks</strong></p>
 				<p>
-					Open Collections Protocol is the shared publishing contract. Tools are optional,
-					interoperable implementations that work with that contract.
+					Collection Manager and Collection Browser are not only standalone tools. They can also
+					be used as embeddable web components.
+				</p>
+				<p>That means they can be integrated into:</p>
+				<ul>
+					<li>heritage portals</li>
+					<li>museum or archive websites</li>
+					<li>collection management interfaces</li>
+					<li>custom apps</li>
+					<li>public browsing environments</li>
+				</ul>
+				<p>
+					This matters because the protocol is not tied to one interface. The same published
+					collection should be usable in many contexts.
 				</p>
 				<p>
-					You can adopt one tool, several tools, or build your own tooling while still
-					remaining compatible with the same open web surface.
+					A flexible attribute and configuration API will make these components easier to adapt
+					to different needs, layouts, permissions, and user journeys.
 				</p>
+			</section>
+
+			<section>
+				<h2>Why this matters</h2>
+				<p>
+					The protocol provides the shared publishing model. The tools make that model usable.
+				</p>
+				<p>That combination matters:</p>
+				<ul>
+					<li>collection owners get simpler ways to publish and manage collections</li>
+					<li>viewers get better ways to explore them</li>
+					<li>developers get reusable components and interfaces</li>
+					<li>institutions stay free to integrate the tools into their own environments</li>
+				</ul>
 			</section>
 		</main>
 	</body>
