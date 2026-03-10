@@ -660,4 +660,151 @@ This keeps the ecosystem open, portable, and scalable.
 
 ---
 
+# Three-Step Collection Loading Model
+
+To support large collections efficiently, LinkedCollections follows a layered loading model.
+
+Instead of loading all data at once, applications should load collections in three stages.
+
+This keeps interfaces fast even for very large collections.
+
+---
+
+# Step 1: Load the Collection Index
+
+The first step is loading the collection manifest:
+
+collection.json
+
+This file should be small and act as an index of the collection.
+
+It contains:
+
+- collection metadata
+- item summaries
+- thumbnail references
+- links to detailed item metadata
+
+Example:
+
+{
+  "id": "harbor-collection",
+  "title": "Harbor Collection",
+  "itemCount": 1250,
+  "items": [
+    {
+      "id": "harbor-map-001",
+      "title": "Harbor Map 001",
+      "thumbnailUrl": "thumbs/harbor-map-001.jpg",
+      "detailUrl": "items/harbor-map-001.json"
+    }
+  ]
+}
+
+This allows tools to render an overview of the collection immediately.
+
+---
+
+# Step 2: Load Item Details on Demand
+
+Detailed metadata for an item should be stored separately.
+
+Example:
+
+items/{id}.json
+
+Applications load these files only when needed.
+
+Examples:
+
+- when opening an item detail panel
+- when editing metadata
+- when exporting full records
+
+This prevents large collections from loading thousands of full records at once.
+
+---
+
+# Step 3: Load Media Assets
+
+Media assets should be loaded separately from metadata.
+
+Examples:
+
+media/{filename}
+thumbs/{filename}
+
+Applications should first display thumbnails and only load full media when required.
+
+Example workflow:
+
+collection page
+↓
+load thumbnails
+↓
+user selects item
+↓
+load item detail
+↓
+load full media
+
+---
+
+# Why This Model Matters
+
+This layered loading approach provides several advantages.
+
+## Fast initial load
+
+Only a small manifest is required to render a collection overview.
+
+## Scalable collections
+
+Collections can grow to tens of thousands of items without slowing down the interface.
+
+## Reduced network usage
+
+Applications only fetch data that is needed.
+
+## Better editing workflows
+
+Item edits affect only a single item file rather than the entire collection.
+
+---
+
+# Implementation Guidance
+
+Applications interacting with LinkedCollections should follow this pattern.
+
+Collector:
+
+- load collection.json
+- display item summaries
+- load item detail when editing
+
+Browser:
+
+- load collection.json
+- render item grid
+- load item metadata when opening a viewer
+
+Indexer:
+
+- fetch collection.json
+- follow detail links for deeper indexing
+
+---
+
+# Guiding Principle
+
+Collections should be designed so that:
+
+summary loads immediately  
+detail loads on demand  
+media loads when needed
+
+This principle allows the system to scale while remaining simple.
+
+---
+
 End of document.
