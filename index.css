@@ -63,6 +63,30 @@ body {
 	gap: 0.35rem;
 }
 
+
+.site-brand,
+.site-nav a {
+	white-space: nowrap;
+}
+
+.table-scroll {
+	overflow-x: auto;
+}
+
+table {
+	display: block;
+	overflow-x: auto;
+	max-width: 100%;
+}
+
+
+iframe,
+img,
+timemap-collector,
+timemap-browser {
+	max-width: 100%;
+}
+
 .site-nav a {
 	color: var(--site-link-color);
 	text-decoration: none;
@@ -209,8 +233,35 @@ th {
 }
 
 @media (max-width: 760px) {
+	.site-header-inner {
+		padding: 0.65rem 0.7rem;
+	}
+
+	.site-nav {
+		width: 100%;
+		flex-wrap: nowrap;
+		overflow-x: auto;
+		padding-bottom: 0.15rem;
+	}
+
 	main {
 		padding: 1rem 0.7rem 2rem;
+		gap: 0.9rem;
+	}
+
+	header,
+	section {
+		padding: 0.85rem 0.85rem;
+	}
+
+	th,
+	td {
+		min-width: 140px;
+		white-space: nowrap;
+	}
+
+	.consumer-toolbar {
+		gap: 0.45rem 0.6rem;
 	}
 }
 

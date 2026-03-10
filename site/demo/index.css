@@ -2,6 +2,7 @@
 
 timemap-collector {
 	display: block;
+	max-width: 100%;
 }
 
 .demo-shell {
@@ -12,4 +13,14 @@ timemap-collector {
 .demo-caption {
 	color: #475569;
 	font-size: 0.95rem;
+}
+
+@media (max-width: 760px) {
+	timemap-collector {
+		min-height: 70vh;
+	}
+
+	.demo-shell {
+		gap: 0.5rem;
+	}
 }
