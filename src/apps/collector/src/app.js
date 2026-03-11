@@ -25,7 +25,7 @@ const SOURCES_DIR_PATH = 'sources';
 const DRAFT_ASSETS_DIR_PATH = 'draft-assets';
 const IMAGE_UPLOAD_ACCEPT = '.jpg,.jpeg,.png,.webp,.gif';
 
-class TimemapCollectorElement extends HTMLElement {
+class OpenCollectionsManagerElement extends HTMLElement {
   constructor() {
     super();
 
@@ -37,6 +37,8 @@ class TimemapCollectorElement extends HTMLElement {
       selectedProviderId: 'github',
       activeSourceFilter: 'all',
       selectedCollectionId: 'all',
+      currentLevel: 'collections',
+      openedCollectionId: null,
       publishDestination: null,
       manifest: null,
       opfsAvailable: false,
@@ -128,6 +130,7 @@ class TimemapCollectorElement extends HTMLElement {
     this.renderAssets();
     this.renderEditor();
     this.renderWorkspaceContext();
+    this.renderSourceContext();
     this.setLocalDraftStatus('Checking local draft storage...', 'neutral');
     this.setLocalDraftControlsEnabled(false);
     this.initializeLocalDraftState();
@@ -866,12 +869,13 @@ class TimemapCollectorElement extends HTMLElement {
       <div class="app-shell">
         <header class="topbar">
           <div class="brand">
-            <h1 class="title">TimeMap Collector</h1>
+            <h1 class="title">Open Collections Manager</h1>
             <p id="statusText" class="status">Not connected.</p>
             <p id="workspaceContext" class="status">Storage: none | Collection: none</p>
           </div>
           <div class="top-actions">
-            <button class="btn btn-primary" id="openNewCollectionBtn" type="button">New collection</button>
+            <button class="btn" id="openSourcePickerBtn" type="button">Source: <span id="activeSourceLabel">Select source</span></button>
+            <button class="btn btn-primary" id="openNewCollectionBtn" type="button">Add collection</button>
             <button class="btn" id="openProviderBtn" type="button">Sources</button>
             <button class="btn" id="openPublishBtn" type="button">Publish</button>
             <button class="btn" id="openRegisterBtn" type="button">Register</button>
@@ -881,16 +885,17 @@ class TimemapCollectorElement extends HTMLElement {
         <div class="content-grid">
           <section class="panel viewport-panel" aria-label="Collection browser">
             <div class="panel-header">
-              <h2 class="panel-title">Collection viewport</h2>
+              <h2 id="viewportTitle" class="panel-title">Collections</h2>
               <div class="panel-header-meta">
+                <button class="btn is-hidden" id="backToCollectionsBtn" type="button">Back</button>
                 <div class="viewport-actions">
-                  <button class="btn" id="addImagesBtn" type="button">Add images</button>
+                  <button class="btn" id="addImagesBtn" type="button">Add item</button>
                   <input id="imageFileInput" type="file" accept="${IMAGE_UPLOAD_ACCEPT}" multiple hidden />
                 </div>
-                <select id="sourceFilter" class="source-filter" aria-label="Filter assets by source">
+                <select id="sourceFilter" class="source-filter is-hidden" aria-label="Filter assets by source">
                   <option value="all">All storage sources</option>
                 </select>
-                <select id="collectionFilter" class="source-filter" aria-label="Choose active collection">
+                <select id="collectionFilter" class="source-filter is-hidden" aria-label="Choose active collection">
                   <option value="all">All collections</option>
                 </select>
                 <p id="assetCount" class="panel-subtext">No assets loaded.</p>
@@ -904,12 +909,23 @@ class TimemapCollectorElement extends HTMLElement {
 
           <aside class="panel editor-panel" aria-label="Metadata editor">
             <div class="panel-header">
-              <h2 class="panel-title">Metadata editor</h2>
-              <p id="editorStatus" class="panel-subtext">Select an asset card.</p>
+              <h2 id="editorTitle" class="panel-title">Metadata editor</h2>
+              <p id="editorStatus" class="panel-subtext">Select a collection card.</p>
             </div>
             <div id="editorEmpty" class="editor-wrap">
-              <div class="empty">Select an item from the grid to edit metadata.</div>
+              <div class="empty">Select a card to edit metadata.</div>
             </div>
+            <form id="collectionEditorForm" class="editor-wrap" hidden>
+              <div class="editor-section">
+                <p class="editor-section-title">Collection details</p>
+                <div class="field-row"><label for="collectionEditorTitle">Title</label><input id="collectionEditorTitle" type="text" /></div>
+                <div class="field-row"><label for="collectionEditorDescription">Description</label><textarea id="collectionEditorDescription"></textarea></div>
+                <div class="field-row"><label for="collectionEditorLicense">License</label><input id="collectionEditorLicense" type="text" /></div>
+                <div class="field-row"><label for="collectionEditorPublisher">Publisher</label><input id="collectionEditorPublisher" type="text" /></div>
+                <div class="field-row"><label for="collectionEditorLanguage">Language</label><input id="collectionEditorLanguage" type="text" /></div>
+              </div>
+              <button class="btn btn-primary" id="saveCollectionBtn" type="button">Save collection metadata</button>
+            </form>
             <form id="editorForm" class="editor-wrap" hidden>
               <div class="editor-section">
                 <p class="editor-section-title">Basic</p>
@@ -1024,6 +1040,16 @@ class TimemapCollectorElement extends HTMLElement {
         </div>
       </dialog>
 
+      <dialog id="sourcePickerDialog" aria-label="Select source">
+        <div class="dialog-shell">
+          <div class="dialog-header">
+            <h2 class="dialog-title">Select source</h2>
+            <button class="btn" data-close="sourcePickerDialog" type="button">Close</button>
+          </div>
+          <div id="sourcePickerList" class="dialog-body"></div>
+        </div>
+      </dialog>
+
       <dialog id="publishDialog" aria-label="Publish collection">
         <div class="dialog-shell">
           <div class="dialog-header">
@@ -1081,7 +1107,7 @@ class TimemapCollectorElement extends HTMLElement {
           <div class="dialog-body">
             <div class="empty">
               Collection registration will be added here.
-              Collector will later register published collections with the registry.
+              Collection Manager will later register published collections with the registry.
             </div>
           </div>
         </div>
@@ -1097,7 +1123,7 @@ class TimemapCollectorElement extends HTMLElement {
             <section class="storage-section">
               <h3 class="storage-heading">Recommended options for open hosting</h3>
               <ul class="storage-list">
-                <li><strong>GitHub</strong>: strong for public manifests, versioning, and easy Collector integration.</li>
+                <li><strong>GitHub</strong>: strong for public manifests, versioning, and easy Collection Manager integration.</li>
                 <li><strong>Cloudflare Pages / R2</strong>: excellent static/browser delivery for JSON + media.</li>
                 <li><strong>S3-compatible storage</strong>: robust long-term hosting for technical teams and institutions.</li>
                 <li><strong>Static website hosting</strong>: simple and dependable for open <code>collection.json</code> publishing.</li>
@@ -1256,10 +1282,17 @@ class TimemapCollectorElement extends HTMLElement {
       statusText: root.getElementById('statusText'),
       workspaceContext: root.getElementById('workspaceContext'),
       openNewCollectionBtn: root.getElementById('openNewCollectionBtn'),
+      openSourcePickerBtn: root.getElementById('openSourcePickerBtn'),
+      activeSourceLabel: root.getElementById('activeSourceLabel'),
+      backToCollectionsBtn: root.getElementById('backToCollectionsBtn'),
+      viewportTitle: root.getElementById('viewportTitle'),
+      editorTitle: root.getElementById('editorTitle'),
       openProviderBtn: root.getElementById('openProviderBtn'),
       openPublishBtn: root.getElementById('openPublishBtn'),
       openRegisterBtn: root.getElementById('openRegisterBtn'),
       providerDialog: root.getElementById('providerDialog'),
+      sourcePickerDialog: root.getElementById('sourcePickerDialog'),
+      sourcePickerList: root.getElementById('sourcePickerList'),
       publishDialog: root.getElementById('publishDialog'),
       newCollectionDialog: root.getElementById('newCollectionDialog'),
       registerDialog: root.getElementById('registerDialog'),
@@ -1309,6 +1342,7 @@ class TimemapCollectorElement extends HTMLElement {
       assetGrid: root.getElementById('assetGrid'),
       editorStatus: root.getElementById('editorStatus'),
       editorEmpty: root.getElementById('editorEmpty'),
+      collectionEditorForm: root.getElementById('collectionEditorForm'),
       editorForm: root.getElementById('editorForm'),
       itemTitle: root.getElementById('itemTitle'),
       itemDescription: root.getElementById('itemDescription'),
@@ -1322,6 +1356,12 @@ class TimemapCollectorElement extends HTMLElement {
       itemTags: root.getElementById('itemTags'),
       itemInclude: root.getElementById('itemInclude'),
       saveItemBtn: root.getElementById('saveItemBtn'),
+      collectionEditorTitle: root.getElementById('collectionEditorTitle'),
+      collectionEditorDescription: root.getElementById('collectionEditorDescription'),
+      collectionEditorLicense: root.getElementById('collectionEditorLicense'),
+      collectionEditorPublisher: root.getElementById('collectionEditorPublisher'),
+      collectionEditorLanguage: root.getElementById('collectionEditorLanguage'),
+      saveCollectionBtn: root.getElementById('saveCollectionBtn'),
       collectionId: root.getElementById('collectionId'),
       collectionTitle: root.getElementById('collectionTitle'),
       collectionDescription: root.getElementById('collectionDescription'),
@@ -1369,6 +1409,11 @@ class TimemapCollectorElement extends HTMLElement {
     this.dom.openPublishBtn.addEventListener('click', () => this.openDialog(this.dom.publishDialog));
     this.dom.openRegisterBtn.addEventListener('click', () => this.openDialog(this.dom.registerDialog));
     this.dom.openNewCollectionBtn.addEventListener('click', () => this.openNewCollectionDialog());
+    this.dom.openSourcePickerBtn.addEventListener('click', () => {
+      this.renderSourcePicker();
+      this.openDialog(this.dom.sourcePickerDialog);
+    });
+    this.dom.backToCollectionsBtn.addEventListener('click', () => this.leaveCollectionView());
     this.dom.closeViewerBtn.addEventListener('click', () => this.closeViewer());
     this.dom.assetViewerDialog.addEventListener('close', () => {
       this.state.viewerItemId = null;
@@ -1384,6 +1429,9 @@ class TimemapCollectorElement extends HTMLElement {
         this.state.selectedItemId = visible[0]?.workspaceId || null;
       }
       this.renderCollectionFilter();
+      this.state.currentLevel = 'collections';
+      this.state.openedCollectionId = null;
+      this.renderSourceContext();
       this.renderAssets();
       this.renderEditor();
       if (this.state.opfsAvailable) {
@@ -1439,6 +1487,10 @@ class TimemapCollectorElement extends HTMLElement {
       await this.updateItem(selected.workspaceId, this.collectEditorPatch(), { explicitSave: true });
     });
 
+    this.dom.saveCollectionBtn.addEventListener('click', async () => {
+      await this.saveSelectedCollectionMetadata();
+    });
+
     this.dom.generateManifestBtn.addEventListener('click', async () => {
       await this.generateManifest();
     });
@@ -1454,6 +1506,10 @@ class TimemapCollectorElement extends HTMLElement {
       await this.publishActiveSourceDraft();
     });
     this.dom.addImagesBtn.addEventListener('click', () => {
+      if (this.state.currentLevel === 'collections') {
+        this.openNewCollectionDialog();
+        return;
+      }
       this.dom.imageFileInput.click();
     });
     this.dom.imageFileInput.addEventListener('change', async (event) => {
@@ -2350,6 +2406,7 @@ class TimemapCollectorElement extends HTMLElement {
     this.state.selectedCollectionId = stillExists ? previous : 'all';
     this.dom.collectionFilter.value = this.state.selectedCollectionId;
     this.renderWorkspaceContext();
+    this.renderSourceContext();
   }
 
   formatSourceBadge(item) {
@@ -3216,44 +3273,187 @@ class TimemapCollectorElement extends HTMLElement {
     }
   }
 
-  renderAssets() {
-    const grid = this.dom.assetGrid;
-    grid.innerHTML = '';
-    const visibleAssets = this.getVisibleAssets();
+  renderSourceContext() {
+    const source = this.getSourceById(this.state.activeSourceFilter);
+    this.dom.activeSourceLabel.textContent = source
+      ? (source.displayLabel || source.label || source.providerLabel || 'Source')
+      : 'Select source';
+  }
 
+  renderSourcePicker() {
+    const wrap = this.dom.sourcePickerList;
+    wrap.innerHTML = '';
     if (this.state.sources.length === 0) {
-      this.dom.assetCount.textContent = 'No assets loaded.';
       const empty = document.createElement('div');
       empty.className = 'empty';
-      if (this.state.selectedCollectionId !== 'all') {
-        empty.textContent = 'This collection is empty. Drag and drop images to add items, or click Add images.';
-      } else {
-        empty.textContent = 'Create a new collection or open Sources to add storage-backed collections.';
-      }
-      const createBtn = document.createElement('button');
-      createBtn.className = 'btn btn-primary';
-      createBtn.type = 'button';
-      createBtn.textContent = 'New collection';
-      createBtn.addEventListener('click', () => this.openNewCollectionDialog());
-      empty.appendChild(document.createElement('br'));
-      empty.appendChild(createBtn);
-      grid.appendChild(empty);
+      empty.textContent = 'No sources connected yet. Use Sources to add one.';
+      wrap.appendChild(empty);
       return;
     }
 
-    this.dom.assetCount.textContent = `${visibleAssets.length} visible | ${this.state.assets.length} total`;
+    for (const source of this.state.sources) {
+      const card = document.createElement('article');
+      card.className = 'source-card';
+      const label = source.displayLabel || source.label || source.providerLabel || 'Source';
+      const type = document.createElement('p');
+      type.className = 'source-card-label';
+      type.textContent = label;
+      const meta = document.createElement('p');
+      meta.className = 'panel-subtext';
+      meta.textContent = `${source.collections?.length || 0} collections`;
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-primary';
+      btn.type = 'button';
+      btn.textContent = 'Use source';
+      btn.addEventListener('click', () => {
+        this.state.activeSourceFilter = source.id;
+        this.state.currentLevel = 'collections';
+        this.state.openedCollectionId = null;
+        this.state.selectedCollectionId = source.selectedCollectionId || 'all';
+        this.renderSourceFilter();
+        this.renderSourceContext();
+        this.renderAssets();
+        this.renderEditor();
+        this.closeDialog(this.dom.sourcePickerDialog);
+      });
+      card.append(type, meta, btn);
+      wrap.appendChild(card);
+    }
+  }
+
+  findSelectedCollectionMeta() {
+    const id = this.state.selectedCollectionId;
+    if (!id || id === 'all') {
+      return null;
+    }
+    if (this.state.activeSourceFilter !== 'all') {
+      const source = this.getSourceById(this.state.activeSourceFilter);
+      const found = source?.collections?.find((entry) => entry.id === id);
+      if (found) return found;
+    }
+    return this.state.localDraftCollections.find((entry) => entry.id === id) || null;
+  }
+
+  openCollectionView(collectionId) {
+    if (!collectionId || collectionId === 'all') return;
+    this.state.selectedCollectionId = collectionId;
+    this.state.openedCollectionId = collectionId;
+    this.state.currentLevel = 'items';
+    this.state.selectedItemId = null;
+    this.renderAssets();
+    this.renderEditor();
+  }
+
+  leaveCollectionView() {
+    this.state.currentLevel = 'collections';
+    this.state.openedCollectionId = null;
+    this.state.selectedItemId = null;
+    this.renderAssets();
+    this.renderEditor();
+  }
+
+  async saveSelectedCollectionMetadata() {
+    const selected = this.findSelectedCollectionMeta();
+    if (!selected) {
+      this.setStatus('Select a collection to edit metadata.', 'warn');
+      return;
+    }
+    const patch = {
+      title: this.dom.collectionEditorTitle.value.trim(),
+      description: this.dom.collectionEditorDescription.value.trim(),
+      license: this.dom.collectionEditorLicense.value.trim(),
+      publisher: this.dom.collectionEditorPublisher.value.trim(),
+      language: this.dom.collectionEditorLanguage.value.trim(),
+    };
+    if (this.state.activeSourceFilter !== 'all') {
+      const source = this.getSourceById(this.state.activeSourceFilter);
+      if (source?.collections) {
+        source.collections = source.collections.map((entry) => entry.id === selected.id ? { ...entry, ...patch } : entry);
+      }
+    }
+    this.state.localDraftCollections = this.state.localDraftCollections.map((entry) => entry.id === selected.id ? { ...entry, ...patch } : entry);
+    this.renderAssets();
+    this.renderEditor();
+    this.setStatus(`Saved collection metadata for ${selected.id}.`, 'ok');
+  }
+
+  renderAssets() {
+    const grid = this.dom.assetGrid;
+    grid.innerHTML = '';
+    this.renderSourceContext();
+
+    if (this.state.currentLevel === 'collections') {
+      this.dom.viewportTitle.textContent = 'Collections';
+      this.dom.backToCollectionsBtn.classList.add('is-hidden');
+      this.dom.addImagesBtn.textContent = 'Add collection';
+
+      let collections = [];
+      if (this.state.activeSourceFilter !== 'all') {
+        const src = this.getSourceById(this.state.activeSourceFilter);
+        collections = src?.collections || [];
+      } else {
+        collections = this.state.localDraftCollections;
+      }
+      this.dom.assetCount.textContent = `${collections.length} collections`;
+
+      if (!collections.length) {
+        const empty = document.createElement('div');
+        empty.className = 'empty';
+        empty.textContent = 'No collections yet. Add a collection to begin.';
+        grid.appendChild(empty);
+        return;
+      }
+
+      for (const collection of collections) {
+        const card = document.createElement('article');
+        card.className = 'asset-card';
+        if (this.state.selectedCollectionId === collection.id) card.classList.add('is-selected');
+        card.addEventListener('click', () => {
+          this.state.selectedCollectionId = collection.id;
+          this.renderAssets();
+          this.renderEditor();
+        });
+
+        const title = document.createElement('p');
+        title.className = 'card-title';
+        title.textContent = collection.title || collection.id;
+
+        const badges = document.createElement('div');
+        badges.className = 'badge-row';
+        const idBadge = document.createElement('span');
+        idBadge.className = 'badge';
+        idBadge.textContent = collection.id;
+        badges.appendChild(idBadge);
+
+        const actions = document.createElement('div');
+        actions.className = 'card-actions';
+        const openBtn = document.createElement('button');
+        openBtn.type = 'button';
+        openBtn.className = 'btn';
+        openBtn.textContent = 'Open';
+        openBtn.addEventListener('click', (event) => {
+          event.stopPropagation();
+          this.openCollectionView(collection.id);
+        });
+        actions.appendChild(openBtn);
+
+        card.append(title, badges, actions);
+        grid.appendChild(card);
+      }
+      return;
+    }
+
+    const visibleAssets = this.getVisibleAssets().filter((item) => item.collectionId === this.state.openedCollectionId);
+    const collection = this.findSelectedCollectionMeta();
+    this.dom.viewportTitle.textContent = collection?.title || this.state.openedCollectionId || 'Collection';
+    this.dom.backToCollectionsBtn.classList.remove('is-hidden');
+    this.dom.addImagesBtn.textContent = 'Add item';
+    this.dom.assetCount.textContent = `${visibleAssets.length} items`;
 
     if (visibleAssets.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'empty';
-      if (this.state.selectedCollectionId !== 'all') {
-        empty.textContent = 'This collection is empty. Drag and drop images to add items, or click Add images.';
-      } else {
-        empty.textContent =
-          this.state.activeSourceFilter === 'all'
-            ? 'Added storage sources have no items.'
-            : 'No items for the selected storage source/collection filters.';
-      }
+      empty.textContent = 'This collection has no items yet. Add item to begin.';
       grid.appendChild(empty);
       return;
     }
@@ -3263,101 +3463,33 @@ class TimemapCollectorElement extends HTMLElement {
       card.className = 'asset-card';
       card.setAttribute('role', 'button');
       card.setAttribute('tabindex', '0');
-      card.setAttribute('aria-label', `Select asset ${item.title || item.id}`);
-      card.setAttribute('aria-selected', this.state.selectedItemId === item.workspaceId ? 'true' : 'false');
-      if (this.state.selectedItemId === item.workspaceId) {
-        card.classList.add('is-selected');
-      }
-
-      card.addEventListener('click', () => {
-        this.selectItem(item.workspaceId);
-      });
-      card.addEventListener('dblclick', () => {
-        this.openViewer(item.workspaceId);
-      });
-      card.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          this.selectItem(item.workspaceId);
-        }
-      });
+      card.setAttribute('aria-label', `Select item ${item.title || item.id}`);
+      if (this.state.selectedItemId === item.workspaceId) card.classList.add('is-selected');
+      card.addEventListener('click', () => this.selectItem(item.workspaceId));
 
       const preview = this.createPreviewNode(item);
-
       const title = document.createElement('p');
       title.className = 'card-title';
       title.textContent = item.title || '(Untitled)';
 
       const badges = document.createElement('div');
       badges.className = 'badge-row';
-
       const completeness = document.createElement('span');
       completeness.className = 'badge';
       completeness.textContent = `Completeness ${this.requiredFieldScore(item)}`;
-
-      const license = document.createElement('span');
-      const hasLicense = Boolean(item.license);
-      license.className = `badge ${hasLicense ? 'ok' : 'warn'}`;
-      license.textContent = hasLicense ? `License: ${item.license}` : 'License missing';
-
-      const include = document.createElement('span');
-      const included = item.include !== false;
-      include.className = `badge ${included ? 'ok' : 'warn'}`;
-      include.textContent = included ? 'Included' : 'Excluded';
-
-      const sourceBadge = document.createElement('span');
-      sourceBadge.className = 'badge source-badge';
-      sourceBadge.textContent = this.formatSourceBadge(item);
-
-      if (item.isLocalDraftAsset || item.draftUploadStatus) {
-        const draftStatus = document.createElement('span');
-        const status = item.draftUploadStatus || 'pending-upload';
-        const labels = {
-          'pending-upload': 'Pending upload',
-          uploading: 'Uploading',
-          uploaded: 'Uploaded',
-          failed: 'Upload failed',
-        };
-        draftStatus.className = `badge asset-status-${status}`;
-        draftStatus.textContent = labels[status] || status;
-        badges.appendChild(draftStatus);
-      }
-
-      if (item.isLocalDraftAsset) {
-        const localBadge = document.createElement('span');
-        localBadge.className = 'badge asset-status-local';
-        localBadge.textContent = 'Local';
-        badges.appendChild(localBadge);
-      }
-
-      badges.append(completeness, license, include, sourceBadge);
+      badges.append(completeness);
 
       const actions = document.createElement('div');
       actions.className = 'card-actions';
-
       const openBtn = document.createElement('button');
       openBtn.type = 'button';
       openBtn.className = 'btn';
       openBtn.textContent = 'View';
       openBtn.addEventListener('click', (event) => {
         event.stopPropagation();
-      });
-      openBtn.addEventListener('click', () => {
         this.openViewer(item.workspaceId);
       });
-
-      const toggleBtn = document.createElement('button');
-      toggleBtn.type = 'button';
-      toggleBtn.className = 'btn';
-      toggleBtn.textContent = included ? 'Exclude' : 'Include';
-      toggleBtn.addEventListener('click', (event) => {
-        event.stopPropagation();
-      });
-      toggleBtn.addEventListener('click', async () => {
-        await this.updateItem(item.workspaceId, { include: !included });
-      });
-
-      actions.append(openBtn, toggleBtn);
+      actions.append(openBtn);
       card.append(preview, title, badges, actions);
       grid.appendChild(card);
     }
@@ -3381,12 +3513,33 @@ class TimemapCollectorElement extends HTMLElement {
   }
 
   renderEditor() {
+    if (this.state.currentLevel === 'collections') {
+      this.dom.editorTitle.textContent = 'Collection metadata';
+      const selectedCollection = this.findSelectedCollectionMeta();
+      this.dom.editorForm.hidden = true;
+      this.dom.collectionEditorForm.hidden = !selectedCollection;
+      this.dom.editorEmpty.hidden = Boolean(selectedCollection);
+      if (!selectedCollection) {
+        this.dom.editorStatus.textContent = 'Select a collection card.';
+        return;
+      }
+      this.dom.editorStatus.textContent = `Editing collection ${selectedCollection.id}`;
+      this.dom.collectionEditorTitle.value = selectedCollection.title || '';
+      this.dom.collectionEditorDescription.value = selectedCollection.description || '';
+      this.dom.collectionEditorLicense.value = selectedCollection.license || '';
+      this.dom.collectionEditorPublisher.value = selectedCollection.publisher || '';
+      this.dom.collectionEditorLanguage.value = selectedCollection.language || '';
+      return;
+    }
+
+    this.dom.editorTitle.textContent = 'Item metadata';
+    this.dom.collectionEditorForm.hidden = true;
     const selected = this.findSelectedItem();
     const selectedSource = selected ? this.getSourceById(selected.sourceId) : null;
     const canSave = Boolean(selectedSource?.capabilities?.canSaveMetadata);
 
     if (!selected) {
-      this.dom.editorStatus.textContent = 'Select an asset card.';
+      this.dom.editorStatus.textContent = 'Select an item card.';
       this.dom.editorForm.hidden = true;
       this.dom.editorEmpty.hidden = false;
       return;
@@ -3398,13 +3551,6 @@ class TimemapCollectorElement extends HTMLElement {
     this.dom.editorStatus.textContent = canSave
       ? `Editing ${selected.id} from ${selected.sourceDisplayLabel || selected.sourceLabel}`
       : `Editing ${selected.id} from ${selected.sourceDisplayLabel || selected.sourceLabel} (read-only source, local edits only)`;
-    if (selected.draftUploadStatus === 'pending-upload') {
-      this.dom.editorStatus.textContent += ' | Pending upload';
-    } else if (selected.draftUploadStatus === 'uploading') {
-      this.dom.editorStatus.textContent += ' | Uploading';
-    } else if (selected.draftUploadStatus === 'failed') {
-      this.dom.editorStatus.textContent += ' | Upload failed';
-    }
 
     this.dom.itemTitle.value = selected.title || '';
     this.dom.itemDescription.value = selected.description || '';
@@ -3989,7 +4135,7 @@ class TimemapCollectorElement extends HTMLElement {
       uploads.push({
         path: this.joinCollectionRootPath(collectionRootPath, item.media?.url || ''),
         blob: original,
-        message: `Upload ${item.id} original via TimeMap Collector`,
+        message: `Upload ${item.id} original via Open Collections Manager`,
       });
 
       const thumb = await this.loadLocalAssetBlob(item, 'thumbnail');
@@ -3997,7 +4143,7 @@ class TimemapCollectorElement extends HTMLElement {
         uploads.push({
           path: this.joinCollectionRootPath(collectionRootPath, item.thumbnailRepoPath),
           blob: thumb,
-          message: `Upload ${item.id} thumbnail via TimeMap Collector`,
+          message: `Upload ${item.id} thumbnail via Open Collections Manager`,
         });
       }
     }
@@ -4014,7 +4160,7 @@ class TimemapCollectorElement extends HTMLElement {
         manifest,
         uploads,
         collectionRootPath,
-        commitMessage: `Publish collection ${manifest.id} via TimeMap Collector`,
+        commitMessage: `Publish collection ${manifest.id} via Open Collections Manager`,
       });
 
       this.state.assets = this.state.assets.map((item) => {
@@ -4043,6 +4189,9 @@ class TimemapCollectorElement extends HTMLElement {
       this.renderSourcesList();
       this.renderSourceFilter();
       this.renderCollectionFilter();
+      this.state.currentLevel = 'collections';
+      this.state.openedCollectionId = null;
+      this.renderSourceContext();
       this.renderAssets();
       this.renderEditor();
 
@@ -4102,6 +4251,6 @@ class TimemapCollectorElement extends HTMLElement {
   }
 }
 
-if (!customElements.get('timemap-collector')) {
-  customElements.define('timemap-collector', TimemapCollectorElement);
+if (!customElements.get('open-collections-manager')) {
+  customElements.define('open-collections-manager', OpenCollectionsManagerElement);
 }
