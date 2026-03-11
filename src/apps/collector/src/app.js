@@ -251,10 +251,17 @@ class OpenCollectionsManagerElement extends HTMLElement {
         .panel-header {
           padding: 0.8rem 0.95rem;
           border-bottom: 1px solid #e2e8f0;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          align-items: center;
+          gap: 0.7rem;
+        }
+
+        .panel-heading-left {
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          gap: 0.7rem;
+          gap: 0.45rem;
+          min-width: 0;
         }
 
         .panel-header-meta {
@@ -268,6 +275,10 @@ class OpenCollectionsManagerElement extends HTMLElement {
         .panel-title {
           margin: 0;
           font-size: 0.95rem;
+          min-width: 0;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         .panel-subtext {
@@ -297,6 +308,12 @@ class OpenCollectionsManagerElement extends HTMLElement {
           gap: 0.5rem;
           cursor: pointer;
           transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+        }
+
+        .collection-card {
+          min-height: 148px;
+          padding: 0.75rem;
+          gap: 0.65rem;
         }
 
         .asset-card:hover {
@@ -408,6 +425,32 @@ class OpenCollectionsManagerElement extends HTMLElement {
 
         .more-actions-btn {
           display: none;
+        }
+
+        .icon-btn {
+          min-width: 2rem;
+          padding: 0.3rem 0.45rem;
+          font-weight: 700;
+          line-height: 1;
+          justify-content: center;
+        }
+
+        .editor-header-meta {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          min-width: 0;
+          justify-content: flex-end;
+        }
+
+        .editor-context {
+          margin: 0;
+          font-size: 0.78rem;
+          color: #64748b;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 200px;
         }
 
         .editor-wrap {
@@ -944,6 +987,11 @@ class OpenCollectionsManagerElement extends HTMLElement {
             width: 100%;
             justify-content: space-between;
             gap: 0.4rem;
+            flex-wrap: nowrap;
+          }
+
+          .panel-heading-left {
+            flex: 1;
           }
 
           .viewport-actions .btn {
@@ -959,10 +1007,20 @@ class OpenCollectionsManagerElement extends HTMLElement {
             gap: 0.55rem;
           }
 
+          .asset-grid.collections-grid {
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+          }
+
           .asset-card {
             padding: 0.48rem;
             gap: 0.4rem;
             box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+          }
+
+          .collection-card {
+            min-height: 168px;
+            padding: 0.72rem;
+            gap: 0.58rem;
           }
 
           .thumb,
@@ -994,6 +1052,17 @@ class OpenCollectionsManagerElement extends HTMLElement {
             padding: 0.7rem 0.8rem;
             background: #ffffff;
             border-bottom: 1px solid #e2e8f0;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+          }
+
+          .editor-context {
+            max-width: 160px;
+          }
+
+          .editor-panel .panel-subtext {
+            display: none;
           }
 
           .editor-wrap {
@@ -1019,16 +1088,18 @@ class OpenCollectionsManagerElement extends HTMLElement {
             <button class="btn" id="openProviderBtn" type="button">Sources</button>
             <button class="btn" id="openPublishBtn" type="button">Publish</button>
             <button class="btn" id="openRegisterBtn" type="button">Register</button>
-            <button class="btn more-actions-btn" id="openMobileActionsBtn" type="button">More</button>
+            <button class="btn more-actions-btn icon-btn" id="openMobileActionsBtn" type="button" aria-label="More actions">⋯</button>
           </div>
         </header>
 
         <div class="content-grid">
           <section class="panel viewport-panel" aria-label="Collection browser">
             <div class="panel-header">
-              <h2 id="viewportTitle" class="panel-title">Collections</h2>
-              <div class="panel-header-meta">
+              <div class="panel-heading-left">
                 <button class="btn is-hidden" id="backToCollectionsBtn" type="button">Back</button>
+                <h2 id="viewportTitle" class="panel-title">Collections</h2>
+              </div>
+              <div class="panel-header-meta">
                 <div class="viewport-actions">
                   <button class="btn" id="addImagesBtn" type="button">Add item</button>
                   <input id="imageFileInput" type="file" accept="${IMAGE_UPLOAD_ACCEPT}" multiple hidden />
@@ -1051,8 +1122,8 @@ class OpenCollectionsManagerElement extends HTMLElement {
           <aside class="panel editor-panel" aria-label="Metadata editor">
             <div class="panel-header">
               <h2 id="editorTitle" class="panel-title">Metadata editor</h2>
-              <div class="panel-header-meta">
-                <p id="editorStatus" class="panel-subtext">Select a collection card.</p>
+              <div class="editor-header-meta">
+                <p id="editorContext" class="editor-context"></p>
                 <button class="btn editor-close-btn" id="closeEditorBtn" type="button">Close</button>
               </div>
             </div>
@@ -1509,7 +1580,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
       assetWrap: root.getElementById('assetWrap'),
       assetDropOverlay: root.getElementById('assetDropOverlay'),
       assetGrid: root.getElementById('assetGrid'),
-      editorStatus: root.getElementById('editorStatus'),
+      editorContext: root.getElementById('editorContext'),
       editorEmpty: root.getElementById('editorEmpty'),
       collectionEditorForm: root.getElementById('collectionEditorForm'),
       editorForm: root.getElementById('editorForm'),
@@ -3594,6 +3665,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
       this.dom.viewportTitle.textContent = 'Collections';
       this.dom.backToCollectionsBtn.classList.add('is-hidden');
       this.dom.addImagesBtn.textContent = 'Add collection';
+      this.dom.assetGrid.classList.add('collections-grid');
 
       let collections = [];
       if (this.state.activeSourceFilter !== 'all') {
@@ -3614,7 +3686,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
 
       for (const collection of collections) {
         const card = document.createElement('article');
-        card.className = 'asset-card';
+        card.className = 'asset-card collection-card';
         if (this.state.selectedCollectionId === collection.id) card.classList.add('is-selected');
         card.addEventListener('click', () => {
           this.state.selectedCollectionId = collection.id;
@@ -3654,6 +3726,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
       return;
     }
 
+    this.dom.assetGrid.classList.remove('collections-grid');
     const visibleAssets = this.getVisibleAssets().filter((item) => item.collectionId === this.state.openedCollectionId);
     const collection = this.findSelectedCollectionMeta();
     this.dom.viewportTitle.textContent = collection?.title || this.state.openedCollectionId || 'Collection';
@@ -3737,11 +3810,11 @@ class OpenCollectionsManagerElement extends HTMLElement {
       this.dom.collectionEditorForm.hidden = !selectedCollection;
       this.dom.editorEmpty.hidden = Boolean(selectedCollection);
       if (!selectedCollection) {
-        this.dom.editorStatus.textContent = 'Select a collection card.';
+        this.dom.editorContext.textContent = 'Select a collection.';
         this.syncEditorVisibility();
         return;
       }
-      this.dom.editorStatus.textContent = `Editing collection ${selectedCollection.id}`;
+      this.dom.editorContext.textContent = selectedCollection.id;
       this.dom.collectionEditorTitle.value = selectedCollection.title || '';
       this.dom.collectionEditorDescription.value = selectedCollection.description || '';
       this.dom.collectionEditorLicense.value = selectedCollection.license || '';
@@ -3758,7 +3831,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
     const canSave = Boolean(selectedSource?.capabilities?.canSaveMetadata);
 
     if (!selected) {
-      this.dom.editorStatus.textContent = 'Select an item card.';
+      this.dom.editorContext.textContent = 'Select an item.';
       this.dom.editorForm.hidden = true;
       this.dom.editorEmpty.hidden = false;
       this.syncEditorVisibility();
@@ -3768,9 +3841,9 @@ class OpenCollectionsManagerElement extends HTMLElement {
     this.dom.editorEmpty.hidden = true;
     this.dom.editorForm.hidden = false;
 
-    this.dom.editorStatus.textContent = canSave
-      ? `Editing ${selected.id} from ${selected.sourceDisplayLabel || selected.sourceLabel}`
-      : `Editing ${selected.id} from ${selected.sourceDisplayLabel || selected.sourceLabel} (read-only source, local edits only)`;
+    this.dom.editorContext.textContent = canSave
+      ? `${selected.id} · ${selected.sourceDisplayLabel || selected.sourceLabel}`
+      : `${selected.id} · ${selected.sourceDisplayLabel || selected.sourceLabel} (local edits)`;
 
     this.dom.itemTitle.value = selected.title || '';
     this.dom.itemDescription.value = selected.description || '';
