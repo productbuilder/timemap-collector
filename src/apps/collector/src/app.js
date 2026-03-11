@@ -38,6 +38,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
       activeSourceFilter: 'all',
       selectedCollectionId: 'all',
       currentLevel: 'collections',
+      metadataMode: 'collection',
       openedCollectionId: null,
       mobileEditorOpen: false,
       publishDestination: null,
@@ -117,6 +118,11 @@ class OpenCollectionsManagerElement extends HTMLElement {
     this.shadow = this.attachShadow({ mode: 'open' });
     this.renderShell();
     this.cacheDom();
+    this.editorViews = {
+      none: this.dom.editorEmpty,
+      collection: this.dom.collectionEditorForm,
+      item: this.dom.editorForm,
+    };
   }
 
   connectedCallback() {
@@ -1131,7 +1137,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
                 <button class="btn editor-close-btn" id="closeEditorBtn" type="button">Close</button>
               </div>
             </div>
-            <div class="editor-content">
+            <div id="editorContent" class="editor-content">
               <div id="editorEmpty" class="editor-wrap">
                 <div class="empty">Select a card to edit metadata.</div>
               </div>
@@ -1527,6 +1533,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
       viewportTitle: root.getElementById('viewportTitle'),
       editorPanel: root.querySelector('.editor-panel'),
       editorTitle: root.getElementById('editorTitle'),
+      editorContent: root.getElementById('editorContent'),
       closeEditorBtn: root.getElementById('closeEditorBtn'),
       openProviderBtn: root.getElementById('openProviderBtn'),
       openPublishBtn: root.getElementById('openPublishBtn'),
@@ -1690,6 +1697,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
       }
       this.renderCollectionFilter();
       this.state.currentLevel = 'collections';
+      this.state.metadataMode = 'collection';
       this.state.openedCollectionId = null;
       this.renderSourceContext();
       this.renderAssets();
@@ -3185,6 +3193,8 @@ class OpenCollectionsManagerElement extends HTMLElement {
     this.state.assets = [];
     this.state.selectedItemId = null;
     this.state.activeSourceFilter = 'all';
+    this.state.currentLevel = 'collections';
+    this.state.metadataMode = 'collection';
 
     this.setStatus(`Restored ${restored.length} remembered storage source definitions.`, 'neutral');
     this.setConnectionStatus('Remembered storage sources loaded. Refresh to reconnect.', 'neutral');
@@ -3483,6 +3493,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
     this.state.viewerItemId = itemId;
     if (this.state.selectedItemId !== itemId) {
       this.state.selectedItemId = itemId;
+      this.state.metadataMode = 'item';
       this.renderAssets();
       this.renderEditor();
     }
@@ -3591,6 +3602,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
       btn.addEventListener('click', () => {
         this.state.activeSourceFilter = source.id;
         this.state.currentLevel = 'collections';
+        this.state.metadataMode = 'collection';
         this.state.openedCollectionId = null;
         this.state.selectedCollectionId = source.selectedCollectionId || 'all';
         this.renderSourceFilter();
@@ -3622,6 +3634,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
     this.state.selectedCollectionId = collectionId;
     this.state.openedCollectionId = collectionId;
     this.state.currentLevel = 'items';
+    this.state.metadataMode = 'item';
     this.state.selectedItemId = null;
     this.closeMobileEditor();
     this.renderAssets();
@@ -3630,6 +3643,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
 
   leaveCollectionView() {
     this.state.currentLevel = 'collections';
+    this.state.metadataMode = 'collection';
     this.state.openedCollectionId = null;
     this.state.selectedItemId = null;
     this.closeMobileEditor();
@@ -3794,6 +3808,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
     }
 
     this.state.selectedItemId = itemId;
+    this.state.metadataMode = 'item';
     this.renderAssets();
     this.renderEditor();
     if (this.isMobileViewport()) {
@@ -3808,20 +3823,37 @@ class OpenCollectionsManagerElement extends HTMLElement {
     return this.state.assets.find((item) => item.workspaceId === this.state.selectedItemId) || null;
   }
 
+  renderMetadataMode(mode) {
+    const activeMode = mode === 'collection' || mode === 'item' ? mode : 'none';
+    const activeView = this.editorViews[activeMode] || null;
+
+    Object.values(this.editorViews).forEach((node) => {
+      if (!node) {
+        return;
+      }
+      if (node.parentElement === this.dom.editorContent) {
+        this.dom.editorContent.removeChild(node);
+      }
+      node.hidden = false;
+    });
+
+    if (activeView) {
+      this.dom.editorContent.appendChild(activeView);
+    }
+
+    return activeMode;
+  }
+
   renderEditor() {
-    const isCollectionLevel = this.state.currentLevel === 'collections';
+    const metadataMode = this.state.metadataMode || 'none';
+    const activeMode = this.renderMetadataMode(metadataMode);
 
-    this.dom.collectionEditorForm.hidden = true;
-    this.dom.editorForm.hidden = true;
-    this.dom.editorEmpty.hidden = true;
-
-    if (isCollectionLevel) {
+    if (activeMode === 'collection') {
       this.dom.editorTitle.textContent = 'Collection metadata';
       const selectedCollection = this.findSelectedCollectionMeta();
-      this.dom.collectionEditorForm.hidden = !selectedCollection;
-      this.dom.editorEmpty.hidden = Boolean(!selectedCollection);
       if (!selectedCollection) {
         this.dom.editorContext.textContent = 'Select a collection.';
+        this.renderMetadataMode('none');
         this.syncEditorVisibility();
         return;
       }
@@ -3835,38 +3867,41 @@ class OpenCollectionsManagerElement extends HTMLElement {
       return;
     }
 
-    this.dom.editorTitle.textContent = 'Item metadata';
-    const selected = this.findSelectedItem();
-    const selectedSource = selected ? this.getSourceById(selected.sourceId) : null;
-    const canSave = Boolean(selectedSource?.capabilities?.canSaveMetadata);
+    if (activeMode === 'item') {
+      this.dom.editorTitle.textContent = 'Item metadata';
+      const selected = this.findSelectedItem();
+      const selectedSource = selected ? this.getSourceById(selected.sourceId) : null;
+      const canSave = Boolean(selectedSource?.capabilities?.canSaveMetadata);
 
-    if (!selected) {
-      this.dom.editorContext.textContent = 'Select an item.';
-      this.dom.editorForm.hidden = true;
-      this.dom.editorEmpty.hidden = false;
+      if (!selected) {
+        this.dom.editorContext.textContent = 'Select an item.';
+        this.renderMetadataMode('none');
+        this.syncEditorVisibility();
+        return;
+      }
+
+      this.dom.editorContext.textContent = canSave
+        ? `${selected.id} · ${selected.sourceDisplayLabel || selected.sourceLabel}`
+        : `${selected.id} · ${selected.sourceDisplayLabel || selected.sourceLabel} (local edits)`;
+
+      this.dom.itemTitle.value = selected.title || '';
+      this.dom.itemDescription.value = selected.description || '';
+      this.dom.itemType.value = selected.media?.type || '';
+      this.dom.itemCreator.value = selected.creator || '';
+      this.dom.itemDate.value = selected.date || '';
+      this.dom.itemLocation.value = selected.location || '';
+      this.dom.itemLicense.value = selected.license || '';
+      this.dom.itemAttribution.value = selected.attribution || '';
+      this.dom.itemSource.value = selected.source || '';
+      this.dom.itemTags.value = Array.isArray(selected.tags) ? selected.tags.join(', ') : '';
+      this.dom.itemInclude.checked = selected.include !== false;
+      this.dom.saveItemBtn.disabled = false;
       this.syncEditorVisibility();
       return;
     }
 
-    this.dom.editorEmpty.hidden = true;
-    this.dom.editorForm.hidden = false;
-
-    this.dom.editorContext.textContent = canSave
-      ? `${selected.id} · ${selected.sourceDisplayLabel || selected.sourceLabel}`
-      : `${selected.id} · ${selected.sourceDisplayLabel || selected.sourceLabel} (local edits)`;
-
-    this.dom.itemTitle.value = selected.title || '';
-    this.dom.itemDescription.value = selected.description || '';
-    this.dom.itemType.value = selected.media?.type || '';
-    this.dom.itemCreator.value = selected.creator || '';
-    this.dom.itemDate.value = selected.date || '';
-    this.dom.itemLocation.value = selected.location || '';
-    this.dom.itemLicense.value = selected.license || '';
-    this.dom.itemAttribution.value = selected.attribution || '';
-    this.dom.itemSource.value = selected.source || '';
-    this.dom.itemTags.value = Array.isArray(selected.tags) ? selected.tags.join(', ') : '';
-    this.dom.itemInclude.checked = selected.include !== false;
-    this.dom.saveItemBtn.disabled = false;
+    this.dom.editorTitle.textContent = 'Metadata editor';
+    this.dom.editorContext.textContent = 'Select a collection or item.';
     this.syncEditorVisibility();
   }
 
@@ -4494,6 +4529,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
       this.renderSourceFilter();
       this.renderCollectionFilter();
       this.state.currentLevel = 'collections';
+      this.state.metadataMode = 'collection';
       this.state.openedCollectionId = null;
       this.renderSourceContext();
       this.renderAssets();
