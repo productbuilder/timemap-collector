@@ -25,17 +25,22 @@
 			<header>
 				<h1>WordPress integration</h1>
 				<p>
-					WordPress can be a practical adoption path. The core public contract remains the
-					protocol outputs and stable URLs.
+					WordPress is an adoption layer, CMS host environment, and configuration/routing layer.
+					Open Collections Protocol remains the public contract.
 				</p>
 			</header>
 
 			<section>
-				<h2>Where WordPress helps</h2>
+				<h2>First plugin direction</h2>
+				<p>
+					A practical first plugin is <strong>Open Collections for WordPress</strong>, focused on
+					embedding Collection Manager, managing settings, and publishing protocol-facing outputs.
+				</p>
 				<ul>
-					<li>familiar CMS workflows for non-technical teams</li>
-					<li>plugin-based integration into institutional websites</li>
-					<li>fast path to publishing manifests and item pages</li>
+					<li>embed Collection Manager in admin/pages</li>
+					<li>configure collection roots and output routes</li>
+					<li>publish manifest, item, and media resources</li>
+					<li>optionally expose DCD at <code>/.well-known/collections.json</code></li>
 				</ul>
 			</section>
 
@@ -43,9 +48,21 @@
 				<h2>Protocol outputs to preserve</h2>
 				<ul>
 					<li><code>collection.json</code> manifest URL</li>
-					<li>stable item and media URLs</li>
-					<li>DCD file at <code>/.well-known/collections.json</code> when applicable</li>
-					<li>optional registry export for registry participation</li>
+					<li>stable item detail URLs</li>
+					<li>stable media URLs</li>
+					<li>optional DCD file at <code>/.well-known/collections.json</code></li>
+					<li>optional registry export in later phases</li>
+				</ul>
+				<p>The public contract should be these outputs, not internal WordPress storage structures.</p>
+			</section>
+
+			<section>
+				<h2>Roadmap</h2>
+				<ul>
+					<li>Phase 1: Publishing + Manager embed</li>
+					<li>Phase 2: Browser embed + better UX</li>
+					<li>Phase 3: Optional registry participation</li>
+					<li>Phase 4: Advanced integrations and provider helpers</li>
 				</ul>
 			</section>
 
@@ -55,6 +72,7 @@
 					<li><a href="./publish-a-collection.html">Publish a collection</a></li>
 					<li><a href="./components-and-embedding.html">Components and embedding</a></li>
 					<li><a href="../../docs/wordpress-integration.md">Technical note (Markdown)</a></li>
+					<li><a href="../../projects/plans/26-03-11/wordpress-integration-plan.md">WordPress integration plan</a></li>
 				</ul>
 			</section>
 		</main>

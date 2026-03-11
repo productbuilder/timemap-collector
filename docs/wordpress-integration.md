@@ -1,105 +1,142 @@
 # WordPress Integration in the Open Collections Protocol Ecosystem
 
-WordPress is one practical integration path for publishing, browsing, and lightweight registry participation.
+WordPress is a practical adoption and integration layer for Open Collections Protocol.
 
-Open Collections Protocol remains the core publication/discovery layer. WordPress is an adoption path, not the protocol itself.
+Open Collections Protocol remains the core publication/discovery layer. WordPress is one implementation path, not the protocol itself.
 
 ## 1) Why WordPress matters
 
-Many institutions and communities already use WordPress.
+WordPress is a strong path for:
 
-That makes it useful for early and incremental protocol adoption:
+- non-technical collection owners
+- small institutions
+- local history groups
+- community publishers
+- teams that already run a WordPress website
 
-- familiar admin interface
-- lower technical barrier
-- practical for smaller organizations and non-technical publishers
-- easier integration into existing websites
+It lowers onboarding friction by reusing familiar admin workflows, hosting, and plugin-based distribution.
 
-## 2) How WordPress fits the protocol
+## 2) Core positioning
 
-A WordPress integration should help publish standard protocol outputs such as:
+A WordPress integration should preserve these boundaries:
+
+- Open Collections Protocol remains the public web contract
+- Collection Manager remains the main editing/publishing UI
+- WordPress provides hosting context, configuration, and routing
+- protocol-facing outputs stay standard and portable
+
+## 3) Plugin concept (first implementation)
+
+A practical first plugin direction is:
+
+- **Open Collections for WordPress**
+
+Phase-1 plugin focus:
+
+- embed Collection Manager
+- manage WordPress-side configuration
+- publish protocol-facing outputs
+- optionally expose Domain-owned Collections Discovery (DCD)
+
+## 4) Relationship to Collection Manager
+
+The plugin should embed/use the existing Collection Manager web component.
+
+- WordPress hosts and configures Collection Manager
+- Collection Manager remains reusable outside WordPress
+- WordPress should not replace Collection Manager with a WordPress-only editor
+
+Likely integration methods include:
+
+- shortcode
+- block
+- admin screen mount
+- page embed
+- settings-driven configuration passed into component initialization
+
+## 5) Suggested implementation roadmap
+
+### Phase 1 — Publishing + Manager embed
+
+- embed Collection Manager
+- provide basic plugin settings
+- configure collection root/output paths
+- expose/generate collection manifest
+- expose optional DCD output
+
+### Phase 2 — Browser + better UX
+
+- embed Collection Browser
+- improve admin/editor experience
+- improve media library integration
+- improve publishing flows
+
+### Phase 3 — Registry participation
+
+- optional Collection Registry participation
+- registry export
+- possibly lightweight registry functions inside WordPress
+
+### Phase 4 — Advanced integrations
+
+- provider-specific helpers
+- richer permission models
+- more flexible embedding/configuration API
+- optional integrations with Collection Registry / Collection Indexer
+
+## 6) Responsibilities split
+
+### WordPress responsibilities
+
+- plugin install/update
+- settings storage
+- user roles/permissions
+- admin UI
+- page/block/shortcode integration
+- optional REST endpoints
+- optional WordPress media integration
+
+### Collection Manager responsibilities
+
+- collection editing UX
+- metadata editing
+- asset organization
+- collection output model
+- publishing workflow logic
+- reusable component behavior
+
+## 7) Output requirements
+
+A WordPress integration should preserve standard protocol resources:
 
 - collection manifest (`collection.json`)
-- item URLs
+- item detail URLs
 - media URLs
-- DCD discovery file (`/.well-known/collections.json`)
-- optional registry export (`registry.json`)
+- optional `/.well-known/collections.json`
+- optional registry export later
 
-Important design boundary:
+Public consumers should integrate with these outputs, not internal WordPress storage structures.
 
-- WordPress internals are implementation details
-- protocol-facing outputs remain standard web resources that any tool can consume
+## 8) Non-goals for v1
 
-## 3) Possible WordPress roles
+Avoid overbuilding in the first version:
 
-### A. Publishing plugin
+- full registry backend inside WordPress
+- full indexer inside WordPress
+- complex custom data modeling too early
+- too many provider integrations at once
 
-- generate or expose `collection.json`
-- expose item detail resources
-- expose media references
-- optionally expose DCD at `/.well-known/collections.json`
+## 9) Why this matters
 
-### B. Browser integration
+This path lowers adoption barriers while preserving open interoperability:
 
-- embed Collection Browser views into WordPress pages
-- show published collections on institutional/public sites
+- easier starting point for non-technical users
+- incremental adoption for existing organizations
+- portable, web-native outputs remain central
+- decentralized protocol architecture remains intact
 
-### C. Manager integration
+## 10) Plan reference
 
-- embed Collection Manager into WordPress-admin or related workflows
-- support collection editing/publishing from familiar CMS environments
+See implementation scaffold and phase details:
 
-### D. Registry integration
-
-- allow WordPress to act as a lightweight Collection Registry
-- store known publishers/collections/registries
-- publish a machine-readable registry export
-
-## 4) Best first direction
-
-A practical staged adoption path is:
-
-1. publishing collections
-2. exposing DCD
-3. embedding Collection Browser
-4. optionally embedding Collection Manager
-5. adding registry support later, or as an optional extension
-
-This keeps the first step manageable.
-
-## 5) Relationship to Collection Registry and Collection Indexer
-
-- WordPress can be one implementation path for publishing and lightweight registry participation
-- Collection Registry remains a broader ecosystem tool concept beyond WordPress
-- Collection Indexer remains a separate processing layer
-
-A WordPress deployment may include registry and indexing features, but architecture should still keep clear module boundaries.
-
-## 6) Components and embedding
-
-Collection Manager and Collection Browser are not only standalone tools.
-
-They can also be embedded as reusable web components inside systems like WordPress.
-
-That supports:
-
-- flexible attribute/configuration APIs
-- integration into public pages, portals, or admin workflows
-- protocol outputs that stay standard and reusable
-
-## 7) Why this matters for non-technical users
-
-WordPress integration helps people adopt the protocol without replacing everything at once:
-
-- no need to adopt a full new platform immediately
-- collections can be managed through familiar publishing environments
-- adoption becomes incremental and practical
-
-## 8) Architectural guidance
-
-Use WordPress as an adapter/integration layer while preserving protocol independence:
-
-- keep protocol-facing outputs independent of WordPress internals
-- do not make WordPress-specific storage the public contract
-- preserve portable outputs and stable URLs
-- keep interoperability as the default goal
+- [WordPress Integration Plan](../projects/plans/26-03-11/wordpress-integration-plan.md)
