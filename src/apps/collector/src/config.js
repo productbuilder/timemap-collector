@@ -2,8 +2,8 @@ export const COLLECTOR_CONFIG = {
   defaultLocalManifestPath: '/site/examples/test-collection/collection.json',
   defaultCollectionMeta: {
     id: 'col-mvp-export',
-    title: 'TimeMap Collector Export',
-    description: 'Manifest generated from TimeMap Collector.',
+    title: 'Open Collections Manager Export',
+    description: 'Manifest generated from Open Collections Manager.',
   },
   googleDriveOAuth: {
     clientId: '',

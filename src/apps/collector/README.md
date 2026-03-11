@@ -1,6 +1,6 @@
-# Collector App
+# Open Collections Manager App
 
-TimeMap Collector is the writable collection-management app.
+Open Collections Manager is the writable collection-management app.
 
 ## Scope
 
@@ -30,10 +30,13 @@ TimeMap Collector is the writable collection-management app.
 - Draft workflow is explicit: `Save locally`, `Restore draft`, `Discard draft`.
 - New collections can be created from scratch via `New collection` and start as local drafts.
 - Each collection uses its own root directory namespace (for example `harbor-collection/collection.json`, `harbor-collection/media/*`, `harbor-collection/thumbs/*`).
-- Collector publishes one selected source + one selected collection at a time.
+- Open Collections Manager publishes one selected source + one selected collection at a time.
 - Image ingestion supports drag-and-drop and file picker (`jpg`, `jpeg`, `png`, `webp`, `gif`).
 - New images are added immediately as local draft items with upload status badges.
 - Thumbnails are generated automatically for image assets when possible.
 - GitHub publish uploads `media/*`, `thumbs/*.thumb.jpg`, and updates `collection.json`.
 - Publishing remains separate from OPFS and uses storage providers.
 - Secrets (PATs, OAuth tokens, passwords) are never persisted in OPFS.
+
+
+> TODO: internal directory naming still uses `src/apps/collector/`; plan a safe follow-up rename to `src/apps/manager/` with import/path updates.
