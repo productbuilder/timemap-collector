@@ -140,3 +140,12 @@ This path lowers adoption barriers while preserving open interoperability:
 See implementation scaffold and phase details:
 
 - [WordPress Integration Plan](../projects/plans/26-03-11/wordpress-integration-plan.md)
+
+## 11) Repository status (current scaffold)
+
+A first plugin scaffold now exists at:
+
+- `integrations/wordpress/open-collections/`
+
+This scaffold establishes plugin bootstrap, settings/admin structure, and early embed/config plumbing for Collection Manager without claiming production completeness.
+
