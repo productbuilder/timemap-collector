@@ -14,32 +14,32 @@
 					<a href="../../">Home</a>
 					<a href="./open-collections-protocol.html">Protocol</a>
 					<a href="../tools/">Tools</a>
-					<a href="../storage/">Storage Providers</a>
+					<a href="../hosting/">Hosting</a>
 					<a href="./" class="is-active" aria-current="page">Documentation</a>
-					<a href="../demo/">Demo</a>
+					<a href="../apps/">Apps</a>
 				</nav>
 			</div>
 		</div>
 		<main>
+			<p class="breadcrumbs"><a href="../../">Home</a> / <a href="./">Documentation</a> / Publish a collection</p>
 			<header>
 				<h1>Publish a collection</h1>
 				<p>
-					This guide is the practical publishing path for non-technical and mixed teams.
-					It keeps the protocol surface simple while linking to deeper technical docs.
+					This is the practical setup path for non-technical and mixed teams.
 				</p>
 			</header>
 
 			<section>
-				<h2>Step 1 — Prepare collection content</h2>
+				<h2>Step 1 - Prepare collection content</h2>
 				<ul>
-					<li>define a collection title and description</li>
+					<li>define collection title, description, and scope</li>
 					<li>organize item metadata and media files</li>
-					<li>decide stable identifiers and URL slugs</li>
+					<li>decide stable identifiers and URL paths</li>
 				</ul>
 			</section>
 
 			<section>
-				<h2>Step 2 — Create and publish <code>collection.json</code></h2>
+				<h2>Step 2 - Publish <code>collection.json</code></h2>
 				<p>
 					Use Collection Manager or your own pipeline to publish a machine-readable manifest at
 					a stable URL.
@@ -47,7 +47,7 @@
 			</section>
 
 			<section>
-				<h2>Step 3 — Publish item and media URLs</h2>
+				<h2>Step 3 - Publish item and media URLs</h2>
 				<ul>
 					<li>publish item detail files where needed</li>
 					<li>publish image/media assets with durable paths</li>
@@ -56,7 +56,7 @@
 			</section>
 
 			<section>
-				<h2>Step 4 — Add domain discovery (DCD, optional but recommended)</h2>
+				<h2>Step 4 - Add domain discovery (optional, recommended)</h2>
 				<p>
 					Publish <code>/.well-known/collections.json</code> so your domain can declare its
 					authoritative collection endpoints.
@@ -64,7 +64,7 @@
 			</section>
 
 			<section>
-				<h2>Step 5 — Validate and test</h2>
+				<h2>Step 5 - Validate and test</h2>
 				<ul>
 					<li>load the manifest in Collection Browser</li>
 					<li>check media URLs and metadata rendering</li>
@@ -73,19 +73,21 @@
 			</section>
 
 			<section>
-				<h2>Step 6 — Embed or present</h2>
+				<h2>Step 6 - Share and present</h2>
 				<p>
-					Embed Collection Browser/Collection Manager components in websites or CMS pages,
-					or present via TimeMap for exploratory navigation.
+					Use Collection Browser and Collection Manager as standalone apps or as embedded
+					components in websites and CMS pages.
 				</p>
 			</section>
 
 			<section>
-				<h2>Related docs</h2>
+				<h2>Related pages</h2>
 				<ul>
+					<li><a href="../hosting/">Hosting overview</a></li>
+					<li><a href="../tools/">Tools overview</a></li>
+					<li><a href="../apps/">Apps overview</a></li>
 					<li><a href="./components-and-embedding.html">Components and embedding</a></li>
 					<li><a href="./provider-implementation.html">Provider and storage implementation</a></li>
-					<li><a href="../storage/">Storage Providers overview</a></li>
 				</ul>
 			</section>
 		</main>

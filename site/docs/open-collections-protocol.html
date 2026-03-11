@@ -14,98 +14,67 @@
 					<a href="../../">Home</a>
 					<a href="./open-collections-protocol.html" class="is-active" aria-current="page">Protocol</a>
 					<a href="../tools/">Tools</a>
-					<a href="../storage/">Storage Providers</a>
+					<a href="../hosting/">Hosting</a>
 					<a href="./">Documentation</a>
-					<a href="../demo/">Demo</a>
+					<a href="../apps/">Apps</a>
 				</nav>
 			</div>
 		</div>
 
 		<main>
+			<p class="breadcrumbs"><a href="../../">Home</a> / Protocol</p>
 			<header>
 				<h1>Open Collections Protocol</h1>
 				<p>
-					Open Collections Protocol is a lightweight way to publish collections on the open web.
-					It treats a collection as a first-class web resource, not as a row inside one central
-					database. The architectural model is <strong>LinkedCollections</strong>, and the domain-level
+					Open Collections Protocol is a lightweight way to publish collections on the open
+					web. A collection is treated as a first-class web resource with stable URLs.
+				</p>
+				<p>
+					The architectural model is <strong>LinkedCollections</strong>, and the domain-level
 					discovery mechanism is <strong>Domain Collections Discovery (DCD)</strong>.
 				</p>
 			</header>
 
 			<section>
-				<h2>1. Why collections need a web-native protocol</h2>
+				<h2>1. Why this protocol exists</h2>
 				<p>
-					Many collections are still trapped inside custom platforms, local databases, or one-off APIs.
-					That makes long-term access, preservation, reuse, and cross-institution discovery harder than it
-					needs to be.
+					Many collections are trapped inside custom platforms, local databases, or one-off
+					APIs. That makes long-term access and cross-institution discovery harder than it needs
+					to be.
 				</p>
 				<p>
-					Databases are useful, and many organizations should keep using them internally. But requiring a
-					complex backend before anything can be published raises the barrier, especially for smaller
-					museums, archives, libraries, and community groups.
-				</p>
-				<p>
-					Open Collections Protocol lowers that barrier. It defines a simple published web surface based on
-					HTTP and JSON. You can still use databases, CMSs, or indexing systems behind the scenes; the
-					protocol simply avoids making them mandatory for publication.
+					This protocol lowers that barrier by defining a simple published web surface based on
+					HTTP and JSON.
 				</p>
 			</section>
 
 			<section>
-				<h2>2. The core idea: collections as published web resources</h2>
-				<p>
-					The easiest way to understand the protocol is to compare it to a normal website:
-				</p>
+				<h2>2. Core model in simple terms</h2>
 				<table>
 					<thead>
 						<tr>
 							<th>Web concept</th>
-							<th>Open Collections Protocol concept</th>
+							<th>Protocol concept</th>
 						</tr>
 					</thead>
 					<tbody>
-						<tr>
-							<td>Website</td>
-							<td>Collection</td>
-						</tr>
-						<tr>
-							<td><code>index.html</code></td>
-							<td><code>collection.json</code> (manifest)</td>
-						</tr>
-						<tr>
-							<td>Web page</td>
-							<td>Item record</td>
-						</tr>
-						<tr>
-							<td>Image/file</td>
-							<td>Media asset URL</td>
-						</tr>
-						<tr>
-							<td>Search engine</td>
-							<td>Collection Indexer</td>
-						</tr>
-						<tr>
-							<td>Browser</td>
-							<td>Collection Browser</td>
-						</tr>
+						<tr><td>Website</td><td>Collection</td></tr>
+						<tr><td><code>index.html</code></td><td><code>collection.json</code> manifest</td></tr>
+						<tr><td>Web page</td><td>Item record</td></tr>
+						<tr><td>Image/file</td><td>Media asset URL</td></tr>
+						<tr><td>Search engine</td><td>Collection Indexer</td></tr>
+						<tr><td>Browser</td><td>Collection Browser</td></tr>
 					</tbody>
 				</table>
-				<p>
-					A collection is something you publish at a URL. The manifest is the entry point. Items and media
-					are addressable resources that other tools can fetch, cache, index, and reuse.
-				</p>
 			</section>
 
 			<section>
-				<h2>3. How it works</h2>
+				<h2>3. Summary-first publication</h2>
 				<p>
-					The protocol uses a summary-first model. A manifest gives lightweight item summaries. Detailed
-					metadata is loaded only when needed, and media files are loaded separately.
+					A manifest provides item summaries first. Detailed metadata and media are loaded only
+					when needed.
 				</p>
-				<p>
-					This keeps publication simple, keeps manifests small and cacheable, and helps browsers render
-					quickly without downloading everything up front.
-				</p>
+				<p class="code-label">Example collection manifest</p>
 				<pre><code>{
   "id": "rotterdam-harbor",
   "title": "Rotterdam Harbor Collection",
@@ -119,6 +88,7 @@
     }
   ]
 }</code></pre>
+				<p class="code-label">Example item record</p>
 				<pre><code>{
   "id": "map-123",
   "title": "Harbor map, 1898",
@@ -131,6 +101,7 @@
     }
   ]
 }</code></pre>
+				<p class="code-label">Example directory structure</p>
 				<pre><code>/.well-known/collections.json
 /collections/rotterdam/collection.json
 /collections/rotterdam/items/123.json
@@ -139,16 +110,12 @@
 			</section>
 
 			<section>
-				<h2>4. Discovery and domain authority (DCD)</h2>
+				<h2>4. Domain discovery (DCD)</h2>
 				<p>
-					Domain Collections Discovery (DCD) is a small discovery file at
-					<code>/.well-known/collections.json</code>. It lets a domain declare which collections it considers
-					authoritative.
+					DCD is a small file at <code>/.well-known/collections.json</code> that declares which
+					collections a domain considers authoritative.
 				</p>
-				<p>
-					The collection files can live on the same server or elsewhere. The important point is that the
-					domain-level declaration gives a trust anchor.
-				</p>
+				<p class="code-label">Example domain discovery file</p>
 				<pre><code>{
   "domain": "museum-example.org",
   "collections": [
@@ -162,15 +129,11 @@
 			</section>
 
 			<section>
-				<h2>5. Collections of collections</h2>
+				<h2>5. Linked collections</h2>
 				<p>
-					Collections are first-class resources, so one collection can reference another collection.
-					This enables federation and reuse without copying data.
+					A collection can reference other collections for federation and reuse.
 				</p>
-				<p>
-					In practice, this supports thematic curation across institutions, national or regional aggregations,
-					and recursive composition where a collection can include subcollections.
-				</p>
+				<p class="code-label">Example linked collection entry</p>
 				<pre><code>{
   "id": "north-sea-maps",
   "title": "North Sea Map Collections",
@@ -190,128 +153,36 @@
 			</section>
 
 			<section>
-				<h2>6. The ecosystem around the protocol</h2>
+				<h2>6. Tool ecosystem around the protocol</h2>
 				<p>
-					Open Collections Protocol is not one centralized platform. It is a protocol and ecosystem pattern.
-					Different tools can operate on the same published resources.
-				</p>
-				<p>
-					Typical ecosystem tools include <strong>Collection Manager</strong> for preparing and publishing collections,
-					<strong>Collection Registry</strong> (internal module: <strong>Registrator</strong>) for registration and validation flows, <strong>Collection Indexer</strong> for discovery and derived search/browse outputs,
-					and <strong>Collection Browser</strong> or <strong>TimeMap</strong> for public exploration and presentation.
-					Some of these tools can also be embedded as reusable components inside other websites, portals, and applications.
+					Typical tools include Collection Manager, Collection Browser, Collection Registry,
+					and Collection Indexer.
 				</p>
 				<ul>
-					<li><strong>Publishing layer:</strong> manifests, item files, and media published over HTTP.</li>
-					<li><strong>Identity layer:</strong> canonical URLs for public identity, optional content hashes for verification.</li>
-					<li><strong>Discovery layer:</strong> DCD files, registries, and indexers that discover and catalog collections.</li>
-					<li><strong>Presentation layer:</strong> browsers, viewers, timelines, and other end-user applications.</li>
+					<li><strong>Publishing layer:</strong> manifests, item files, and media URLs.</li>
+					<li><strong>Identity layer:</strong> canonical URLs, with optional hashes.</li>
+					<li><strong>Discovery layer:</strong> DCD files, registries, and indexers.</li>
+					<li><strong>Presentation layer:</strong> browsers and other end-user apps.</li>
 				</ul>
+				<p class="code-label">Example architecture sketch</p>
 				<pre><code>Domain
-  ├─ /.well-known/collections.json (DCD)
-  └─ collection.json
-       ├─ items/*.json
-       └─ media/*
+  |- /.well-known/collections.json (DCD)
+  `- collection.json
+      |- items/*.json
+      `- media/*
 
 Collection Registry + Collection Indexer / Collection Browser / Aggregator
-  └─ consume published URLs and build different experiences</code></pre>
-				<p>
-					See also: <a href="./collection-registry-and-indexer.html">Collection Registry and Collection Indexer implementation guide</a>
-					and <a href="./wordpress-integration.html">WordPress integration</a>.
-				</p>
+  `- consume published URLs and build different experiences</code></pre>
 			</section>
 
 			<section>
-				<h2>7. Why this matters for heritage organizations</h2>
-				<p>
-					For museums, archives, libraries, local history groups, and community projects, this model supports
-					incremental adoption. You can start with a simple, static, openly published collection and improve
-					it over time.
-				</p>
+				<h2>7. Practical next steps</h2>
 				<ul>
-					<li>Lower technical barrier for publication.</li>
-					<li>Domain-owned authority rather than forced platform lock-in.</li>
-					<li>Portability and long-term preservation of published artifacts.</li>
-					<li>Easier discovery, aggregation, and reuse across institutions.</li>
-					<li>No requirement to move everything into one shared backend.</li>
+					<li><a href="./publish-a-collection.html">Publish a collection</a></li>
+					<li><a href="../hosting/">Choose hosting</a></li>
+					<li><a href="../tools/">Understand tool roles</a></li>
+					<li><a href="../apps/">Open available apps</a></li>
 				</ul>
-			</section>
-
-			<section>
-				<h2>8. Why this matters for developers</h2>
-				<p>
-					The protocol is HTTP-native, JSON-first, and static-host friendly. It is easy to test locally, cache,
-					crawl, and integrate with existing tooling.
-				</p>
-				<ul>
-					<li>No required central backend for publication.</li>
-					<li>Works with plain static hosting and CDN distribution.</li>
-					<li>Straightforward to build editors, crawlers, registries, browsers, and importers.</li>
-					<li>Supports progressive enhancement: start simple, layer richer services later.</li>
-				</ul>
-				<p>
-					If your stack uses databases or CMS systems, keep using them. The protocol does not dictate internal
-					storage. It defines the published web contract that others can consume reliably.
-				</p>
-			</section>
-
-			<section>
-				<h2>9. Identity in simple terms</h2>
-				<p>
-					Inside a collection, local IDs such as <code>map-123</code> are useful. Publicly, the main identity is
-					the canonical URL of the manifest, item, or media file.
-				</p>
-				<p>
-					Optional content hashes can be added when needed for integrity checks, deduplication, and version-aware
-					workflows. In short: URL tells you where a resource is; hash can tell you exactly what bytes it is.
-				</p>
-			</section>
-
-			<section>
-				<h2>10. Relationship to existing standards</h2>
-				<p>
-					Open Collections Protocol is a lightweight baseline. It does not replace IIIF, JSON-LD, schema.org,
-					RDF, or open data catalogs.
-				</p>
-				<ul>
-					<li><strong>IIIF:</strong> can be linked for rich image delivery and viewers.</li>
-					<li><strong>JSON-LD / schema.org:</strong> can be embedded or referenced for semantic interoperability.</li>
-					<li><strong>Linked Data / RDF:</strong> can be added in advanced workflows without blocking basic publication.</li>
-					<li><strong>Open data portals:</strong> can ingest or point to published collection manifests.</li>
-				</ul>
-				<p>
-					The priority is practical adoption and open publication first. Richer semantic and domain standards can
-					be layered on top.
-				</p>
-			</section>
-
-			<section>
-				<h2>11. What the protocol includes — and what it does not</h2>
-				<p>
-					Included in the core: manifest publication, item and media URLs, lightweight discovery (DCD), and
-					interoperable consumption by independent tools.
-				</p>
-				<p>
-					Not required in the core: central governance service, mandatory triplestores, mandatory IIIF stacks,
-					mandatory commercial licensing systems, or any single vendor platform.
-				</p>
-				<p>
-					Optional extensions can exist for richer provenance, analytics, licensing, access control, and commercial
-					services. The protocol boundary stays minimal and open.
-				</p>
-			</section>
-
-			<section>
-				<h2>12. Closing summary</h2>
-				<p>
-					Open Collections Protocol makes collection publishing work like the web itself: simple entry points,
-					addressable resources, independent hosting, and many possible consumers. LinkedCollections provides the
-					architectural model. DCD provides domain-level discovery and authority.
-				</p>
-				<p>
-					For heritage institutions and developers alike, this creates a practical path to publish once, stay in
-					control, and participate in a broader open ecosystem without waiting for a single centralized platform.
-				</p>
 			</section>
 		</main>
 	</body>

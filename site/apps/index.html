@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<title>Tools | Open Collections Protocol</title>
+		<title>Apps | Open Collections Protocol</title>
 		<link rel="stylesheet" href="../../index.css" />
 	</head>
 	<body class="docs-page">
@@ -13,58 +13,58 @@
 				<nav class="site-nav" aria-label="Primary navigation">
 					<a href="../../">Home</a>
 					<a href="../docs/open-collections-protocol.html">Protocol</a>
-					<a href="./" class="is-active" aria-current="page">Tools</a>
+					<a href="../tools/">Tools</a>
 					<a href="../hosting/">Hosting</a>
 					<a href="../docs/">Documentation</a>
-					<a href="../apps/">Apps</a>
+					<a href="./" class="is-active" aria-current="page">Apps</a>
 				</nav>
 			</div>
 		</div>
-
 		<main>
-			<p class="breadcrumbs"><a href="../../">Home</a> / Tools</p>
+			<p class="breadcrumbs"><a href="../../">Home</a> / Apps</p>
 			<header>
-				<h1>Tools</h1>
+				<h1>Apps</h1>
 				<p>
-					Tools describe the roles in the Open Collections Protocol ecosystem. For runnable app
-					entry points, use the <a href="../apps/">Apps page</a>.
+					Apps are runnable implementations of tool roles. Use this page to open available
+					apps and to see which parts are planned.
 				</p>
 			</header>
 
 			<section>
-				<h2>Publishing and viewing roles</h2>
+				<h2>Available now</h2>
 				<div class="link-grid">
-					<article class="tool-card">
+					<article class="tool-card" id="collection-manager">
 						<h3>Collection Manager</h3>
-						<p>Create, edit, and publish <code>collection.json</code>, item records, and media links.</p>
+						<p>Create and publish collections.</p>
 						<div class="chip-row">
-							<span class="chip ok">App available now</span>
+							<span class="chip ok">Available now</span>
 						</div>
 						<div class="cta-row">
 							<a class="button-link" href="../../src/apps/collector/" target="_blank" rel="noopener">Open app</a>
-							<a class="button-link button-link-secondary" href="../apps/#collection-manager">Manager in Apps</a>
+							<a class="button-link button-link-secondary" href="../demo/">Open embed demo</a>
 						</div>
 					</article>
-					<article class="tool-card">
+
+					<article class="tool-card" id="collection-browser">
 						<h3>Collection Browser</h3>
-						<p>Read and explore published collections in public websites, portals, and embeds.</p>
+						<p>Browse and inspect published collections.</p>
 						<div class="chip-row">
-							<span class="chip ok">App available now</span>
+							<span class="chip ok">Available now</span>
 						</div>
 						<div class="cta-row">
 							<a class="button-link" href="../../src/apps/browser/" target="_blank" rel="noopener">Open app</a>
-							<a class="button-link button-link-secondary" href="../apps/#collection-browser">Browser in Apps</a>
+							<a class="button-link button-link-secondary" href="../docs/components-and-embedding.html">Embedding docs</a>
 						</div>
 					</article>
 				</div>
 			</section>
 
 			<section>
-				<h2>Discovery and processing roles</h2>
+				<h2>Planned apps</h2>
 				<div class="link-grid">
 					<article class="tool-card">
 						<h3>Collection Registry</h3>
-						<p>Tracks known collections and publisher endpoints for discovery workflows.</p>
+						<p>Public registration service for known collection endpoints.</p>
 						<div class="chip-row">
 							<span class="chip stub">Planned</span>
 							<span class="chip">Documentation available</span>
@@ -75,7 +75,7 @@
 					</article>
 					<article class="tool-card">
 						<h3>Collection Indexer</h3>
-						<p>Processes published manifests and item records into discovery and search outputs.</p>
+						<p>Indexer service for discovery and search outputs.</p>
 						<div class="chip-row">
 							<span class="chip stub">Planned</span>
 							<span class="chip">Documentation available</span>
@@ -86,17 +86,6 @@
 					</article>
 				</div>
 			</section>
-
-			<section>
-				<h2>Practical next steps</h2>
-				<ul>
-					<li><a href="../docs/publish-a-collection.html">Publish a collection</a></li>
-					<li><a href="../hosting/">Choose hosting (Git, S3-compatible, mixed)</a></li>
-					<li><a href="../apps/">Open runnable apps</a></li>
-					<li><a href="../docs/collection-registry-and-indexer.html">Collection Registry and Collection Indexer</a></li>
-				</ul>
-			</section>
 		</main>
 	</body>
 </html>
-

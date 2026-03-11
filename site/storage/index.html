@@ -3,84 +3,19 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<title>Storage Providers | Open Collections Protocol</title>
+		<title>Hosting moved | Open Collections Protocol</title>
+		<meta http-equiv="refresh" content="0; url=../hosting/" />
 		<link rel="stylesheet" href="../../index.css" />
 	</head>
 	<body class="docs-page">
-		<div class="site-header">
-			<div class="site-header-inner">
-				<div class="site-brand">Open Collections Protocol</div>
-				<nav class="site-nav" aria-label="Primary navigation">
-					<a href="../../">Home</a>
-					<a href="../docs/open-collections-protocol.html">Protocol</a>
-					<a href="../tools/">Tools</a>
-					<a href="./" class="is-active" aria-current="page">Storage Providers</a>
-					<a href="../docs/">Documentation</a>
-					<a href="../demo/">Demo</a>
-				</nav>
-			</div>
-		</div>
-
 		<main>
 			<header>
-				<h1>Storage Providers</h1>
+				<h1>Hosting page moved</h1>
 				<p>
-					Open Collections Protocol does not require one hosting platform. Publish collections
-					using storage choices that fit your team while keeping stable public URLs.
+					This page has moved to <a href="../hosting/">Hosting</a>.
 				</p>
 			</header>
-
-			<section>
-				<h2>What every storage setup must provide</h2>
-				<ul>
-					<li>a stable <code>collection.json</code> URL</li>
-					<li>stable item and media URLs</li>
-					<li>optional DCD discovery file at <code>/.well-known/collections.json</code></li>
-					<li>enough durability for long-term collection access</li>
-				</ul>
-			</section>
-
-			<section>
-				<h2>Git-based providers</h2>
-				<p>
-					Good for versioned, file-first publication workflows and small/medium collections.
-				</p>
-				<ul>
-					<li>Examples: GitHub, GitLab, Forgejo, Gitea</li>
-					<li>Strengths: version history, review workflows, transparent file changes</li>
-					<li>Typical use: curated public collections and iterative publishing</li>
-				</ul>
-			</section>
-
-			<section>
-				<h2>S3-compatible object storage</h2>
-				<p>
-					Good for larger media workloads and scalable asset delivery.
-				</p>
-				<ul>
-					<li>Examples: AWS S3, Cloudflare R2, Backblaze B2 (S3), MinIO, Wasabi</li>
-					<li>Strengths: scalability, CDN-friendly asset hosting, media-heavy collections</li>
-					<li>Typical use: larger institutional datasets and high-volume media delivery</li>
-				</ul>
-			</section>
-
-			<section>
-				<h2>Common mixed model</h2>
-				<ul>
-					<li>Store manifests and metadata files in Git-based publishing</li>
-					<li>Store large media in S3-compatible buckets</li>
-					<li>Expose both through stable URLs</li>
-				</ul>
-			</section>
-
-			<section>
-				<h2>Implementation guidance</h2>
-				<ul>
-					<li><a href="../docs/publish-a-collection.html">Publish a collection</a></li>
-					<li><a href="../docs/provider-implementation.html">Provider and storage implementation</a></li>
-					<li><a href="../docs/wordpress-integration.html">WordPress integration</a></li>
-				</ul>
-			</section>
 		</main>
 	</body>
 </html>
+

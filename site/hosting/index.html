@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Hosting | Open Collections Protocol</title>
+		<link rel="stylesheet" href="../../index.css" />
+	</head>
+	<body class="docs-page">
+		<div class="site-header">
+			<div class="site-header-inner">
+				<div class="site-brand">Open Collections Protocol</div>
+				<nav class="site-nav" aria-label="Primary navigation">
+					<a href="../../">Home</a>
+					<a href="../docs/open-collections-protocol.html">Protocol</a>
+					<a href="../tools/">Tools</a>
+					<a href="./" class="is-active" aria-current="page">Hosting</a>
+					<a href="../docs/">Documentation</a>
+					<a href="../apps/">Apps</a>
+				</nav>
+			</div>
+		</div>
+
+		<main>
+			<p class="breadcrumbs"><a href="../../">Home</a> / Hosting</p>
+			<header>
+				<h1>Hosting</h1>
+				<p>
+					You can host collections on familiar infrastructure. The protocol does not require a
+					single platform - it requires stable URLs and clear published files.
+				</p>
+				<div class="cta-row">
+					<a class="button-link" href="../docs/publish-a-collection.html">Publish a collection</a>
+					<a class="button-link button-link-secondary" href="../tools/">See tool roles</a>
+					<a class="button-link button-link-secondary" href="../docs/provider-implementation.html">Implementation details</a>
+				</div>
+			</header>
+
+			<section>
+				<h2>What every hosting setup must provide</h2>
+				<ul>
+					<li>a stable <code>collection.json</code> URL</li>
+					<li>stable item and media URLs</li>
+					<li>optional domain discovery at <code>/.well-known/collections.json</code></li>
+					<li>durable access for long-term collection reuse</li>
+				</ul>
+			</section>
+
+			<section>
+				<h2>Storage options inside hosting</h2>
+				<h3>Git-based hosting</h3>
+				<p>Good for file-first workflows, version history, and review-based publishing.</p>
+				<ul>
+					<li>Examples: GitHub, GitLab, Forgejo, Gitea</li>
+					<li>Best for: small and medium collections with iterative updates</li>
+				</ul>
+				<h3>S3-compatible hosting</h3>
+				<p>Good for larger media delivery and scalable static asset hosting.</p>
+				<ul>
+					<li>Examples: AWS S3, Cloudflare R2, Backblaze B2 (S3), MinIO, Wasabi</li>
+					<li>Best for: media-heavy collections and high-volume delivery</li>
+				</ul>
+				<h3>Mixed hosting model</h3>
+				<ul>
+					<li>Keep manifests and item metadata in Git-based hosting</li>
+					<li>Keep large media files in S3-compatible storage</li>
+					<li>Expose both through stable URLs</li>
+				</ul>
+			</section>
+
+			<section>
+				<h2>Related pages</h2>
+				<ul>
+					<li><a href="../docs/publish-a-collection.html">Publish a collection</a></li>
+					<li><a href="../docs/provider-implementation.html">Provider and storage implementation</a></li>
+					<li><a href="../apps/">Apps</a></li>
+				</ul>
+			</section>
+		</main>
+	</body>
+</html>

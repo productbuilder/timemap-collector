@@ -107,6 +107,21 @@ timemap-browser {
 	text-decoration: none;
 }
 
+.breadcrumbs {
+	font-size: 0.9rem;
+	color: #334155;
+}
+
+.breadcrumbs a {
+	color: #0c4a6e;
+	text-decoration: none;
+}
+
+.breadcrumbs a:hover,
+.breadcrumbs a:focus-visible {
+	text-decoration: underline;
+}
+
 main {
 	max-width: 1080px;
 	margin: 0 auto;
@@ -356,6 +371,26 @@ th {
 	border-color: #fcd34d;
 	background: #fffbeb;
 	color: #92400e;
+}
+
+.tool-card {
+	display: grid;
+	gap: 0.65rem;
+	padding: 0.75rem;
+	border: 1px solid var(--site-border-color);
+	border-radius: var(--site-radius-small);
+	background: #f8fafc;
+}
+
+.tool-card h3 {
+	margin: 0;
+}
+
+.code-label {
+	margin-top: 0.7rem;
+	font-size: 0.95rem;
+	font-weight: 600;
+	color: #0f172a;
 }
 
 .embed-frame {

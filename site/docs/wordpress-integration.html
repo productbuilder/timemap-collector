@@ -14,67 +14,45 @@
 					<a href="../../">Home</a>
 					<a href="./open-collections-protocol.html">Protocol</a>
 					<a href="../tools/">Tools</a>
-					<a href="../storage/">Storage Providers</a>
+					<a href="../hosting/">Hosting</a>
 					<a href="./" class="is-active" aria-current="page">Documentation</a>
-					<a href="../demo/">Demo</a>
+					<a href="../apps/">Apps</a>
 				</nav>
 			</div>
 		</div>
 		<main>
+			<p class="breadcrumbs"><a href="../../">Home</a> / <a href="./">Documentation</a> / WordPress integration</p>
 			<header>
 				<h1>WordPress integration</h1>
 				<p>
-					WordPress is an adoption path, not the architecture itself. LinkedCollections and the
-					Open Collections Protocol web contract remain the core.
+					WordPress can be a practical adoption path. The core public contract remains the
+					protocol outputs and stable URLs.
 				</p>
 			</header>
 
 			<section>
 				<h2>Where WordPress helps</h2>
 				<ul>
-					<li>familiar CMS workflows for non-technical publishing teams</li>
-					<li>plugin-based integration into existing institutional websites</li>
-					<li>quick path to publishing collection manifests and item pages</li>
+					<li>familiar CMS workflows for non-technical teams</li>
+					<li>plugin-based integration into institutional websites</li>
+					<li>fast path to publishing manifests and item pages</li>
 				</ul>
 			</section>
 
 			<section>
-				<h2>Protocol-facing outputs to preserve</h2>
+				<h2>Protocol outputs to preserve</h2>
 				<ul>
 					<li><code>collection.json</code> manifest URL</li>
 					<li>stable item and media URLs</li>
-					<li>DCD file at <code>/.well-known/collections.json</code> (when applicable)</li>
-					<li>optional registry export for Registry participation</li>
-				</ul>
-				<p>
-					The key rule: WordPress internals should not become the public protocol contract.
-				</p>
-			</section>
-
-			<section>
-				<h2>Integration modes</h2>
-				<ul>
-					<li>Publishing plugin for manifest/item/media outputs</li>
-					<li>Embedded Collection Browser in public pages</li>
-					<li>Embedded Collection Manager in admin workflows</li>
-					<li>Optional lightweight Collection Registry role</li>
+					<li>DCD file at <code>/.well-known/collections.json</code> when applicable</li>
+					<li>optional registry export for registry participation</li>
 				</ul>
 			</section>
 
 			<section>
-				<h2>Recommended sequence</h2>
-				<ol>
-					<li>Start with publishing outputs and stable URLs.</li>
-					<li>Add DCD for domain discovery.</li>
-					<li>Embed Collection Browser for presentation.</li>
-					<li>Add Manager and Registry capabilities as needed.</li>
-				</ol>
-			</section>
-
-			<section>
-				<h2>Related docs</h2>
+				<h2>Related pages</h2>
 				<ul>
-					<li><a href="./collection-registry-and-indexer.html">Collection Registry and Collection Indexer</a></li>
+					<li><a href="./publish-a-collection.html">Publish a collection</a></li>
 					<li><a href="./components-and-embedding.html">Components and embedding</a></li>
 					<li><a href="../../docs/wordpress-integration.md">Technical note (Markdown)</a></li>
 				</ul>
