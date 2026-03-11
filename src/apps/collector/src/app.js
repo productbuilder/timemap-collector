@@ -453,12 +453,16 @@ class OpenCollectionsManagerElement extends HTMLElement {
           max-width: 200px;
         }
 
+        .editor-content {
+          min-height: 0;
+          overflow: auto;
+        }
+
         .editor-wrap {
           padding: 0.95rem;
           display: grid;
           gap: 0.6rem;
           align-content: start;
-          overflow: auto;
           min-height: 0;
         }
 
@@ -1127,49 +1131,51 @@ class OpenCollectionsManagerElement extends HTMLElement {
                 <button class="btn editor-close-btn" id="closeEditorBtn" type="button">Close</button>
               </div>
             </div>
-            <div id="editorEmpty" class="editor-wrap">
-              <div class="empty">Select a card to edit metadata.</div>
+            <div class="editor-content">
+              <div id="editorEmpty" class="editor-wrap">
+                <div class="empty">Select a card to edit metadata.</div>
+              </div>
+              <form id="collectionEditorForm" class="editor-wrap" hidden>
+                <div class="editor-section">
+                  <p class="editor-section-title">Collection details</p>
+                  <div class="field-row"><label for="collectionEditorTitle">Title</label><input id="collectionEditorTitle" type="text" /></div>
+                  <div class="field-row"><label for="collectionEditorDescription">Description</label><textarea id="collectionEditorDescription"></textarea></div>
+                  <div class="field-row"><label for="collectionEditorLicense">License</label><input id="collectionEditorLicense" type="text" /></div>
+                  <div class="field-row"><label for="collectionEditorPublisher">Publisher</label><input id="collectionEditorPublisher" type="text" /></div>
+                  <div class="field-row"><label for="collectionEditorLanguage">Language</label><input id="collectionEditorLanguage" type="text" /></div>
+                </div>
+                <button class="btn btn-primary" id="saveCollectionBtn" type="button">Save collection metadata</button>
+              </form>
+              <form id="editorForm" class="editor-wrap" hidden>
+                <div class="editor-section">
+                  <p class="editor-section-title">Basic</p>
+                  <div class="field-row"><label for="itemTitle">Title</label><input id="itemTitle" type="text" /></div>
+                  <div class="field-row"><label for="itemDescription">Description</label><textarea id="itemDescription"></textarea></div>
+                  <div class="field-row"><label for="itemType">Type / Format</label><input id="itemType" type="text" /></div>
+                </div>
+                <div class="editor-section">
+                  <p class="editor-section-title">Authorship</p>
+                  <div class="field-row"><label for="itemCreator">Creator</label><input id="itemCreator" type="text" /></div>
+                  <div class="field-row"><label for="itemAttribution">Attribution</label><input id="itemAttribution" type="text" /></div>
+                </div>
+                <div class="editor-section">
+                  <p class="editor-section-title">Context</p>
+                  <div class="field-row"><label for="itemDate">Date / Period</label><input id="itemDate" type="text" /></div>
+                  <div class="field-row"><label for="itemLocation">Location</label><input id="itemLocation" type="text" /></div>
+                </div>
+                <div class="editor-section">
+                  <p class="editor-section-title">Rights</p>
+                  <div class="field-row"><label for="itemLicense">License</label><input id="itemLicense" type="text" /></div>
+                  <div class="field-row"><label for="itemSource">Source</label><input id="itemSource" type="text" /></div>
+                </div>
+                <div class="editor-section">
+                  <p class="editor-section-title">Classification</p>
+                  <div class="field-row"><label for="itemTags">Tags / Keywords (comma separated)</label><input id="itemTags" type="text" /></div>
+                </div>
+                <label class="checkbox-row" for="itemInclude"><span>Include in manifest</span><input id="itemInclude" type="checkbox" /></label>
+                <button class="btn btn-primary" id="saveItemBtn" type="button">Save item metadata</button>
+              </form>
             </div>
-            <form id="collectionEditorForm" class="editor-wrap" hidden>
-              <div class="editor-section">
-                <p class="editor-section-title">Collection details</p>
-                <div class="field-row"><label for="collectionEditorTitle">Title</label><input id="collectionEditorTitle" type="text" /></div>
-                <div class="field-row"><label for="collectionEditorDescription">Description</label><textarea id="collectionEditorDescription"></textarea></div>
-                <div class="field-row"><label for="collectionEditorLicense">License</label><input id="collectionEditorLicense" type="text" /></div>
-                <div class="field-row"><label for="collectionEditorPublisher">Publisher</label><input id="collectionEditorPublisher" type="text" /></div>
-                <div class="field-row"><label for="collectionEditorLanguage">Language</label><input id="collectionEditorLanguage" type="text" /></div>
-              </div>
-              <button class="btn btn-primary" id="saveCollectionBtn" type="button">Save collection metadata</button>
-            </form>
-            <form id="editorForm" class="editor-wrap" hidden>
-              <div class="editor-section">
-                <p class="editor-section-title">Basic</p>
-                <div class="field-row"><label for="itemTitle">Title</label><input id="itemTitle" type="text" /></div>
-                <div class="field-row"><label for="itemDescription">Description</label><textarea id="itemDescription"></textarea></div>
-                <div class="field-row"><label for="itemType">Type / Format</label><input id="itemType" type="text" /></div>
-              </div>
-              <div class="editor-section">
-                <p class="editor-section-title">Authorship</p>
-                <div class="field-row"><label for="itemCreator">Creator</label><input id="itemCreator" type="text" /></div>
-                <div class="field-row"><label for="itemAttribution">Attribution</label><input id="itemAttribution" type="text" /></div>
-              </div>
-              <div class="editor-section">
-                <p class="editor-section-title">Context</p>
-                <div class="field-row"><label for="itemDate">Date / Period</label><input id="itemDate" type="text" /></div>
-                <div class="field-row"><label for="itemLocation">Location</label><input id="itemLocation" type="text" /></div>
-              </div>
-              <div class="editor-section">
-                <p class="editor-section-title">Rights</p>
-                <div class="field-row"><label for="itemLicense">License</label><input id="itemLicense" type="text" /></div>
-                <div class="field-row"><label for="itemSource">Source</label><input id="itemSource" type="text" /></div>
-              </div>
-              <div class="editor-section">
-                <p class="editor-section-title">Classification</p>
-                <div class="field-row"><label for="itemTags">Tags / Keywords (comma separated)</label><input id="itemTags" type="text" /></div>
-              </div>
-              <label class="checkbox-row" for="itemInclude"><span>Include in manifest</span><input id="itemInclude" type="checkbox" /></label>
-              <button class="btn btn-primary" id="saveItemBtn" type="button">Save metadata</button>
-            </form>
           </aside>
         </div>
       </div>
@@ -3803,12 +3809,17 @@ class OpenCollectionsManagerElement extends HTMLElement {
   }
 
   renderEditor() {
-    if (this.state.currentLevel === 'collections') {
+    const isCollectionLevel = this.state.currentLevel === 'collections';
+
+    this.dom.collectionEditorForm.hidden = true;
+    this.dom.editorForm.hidden = true;
+    this.dom.editorEmpty.hidden = true;
+
+    if (isCollectionLevel) {
       this.dom.editorTitle.textContent = 'Collection metadata';
       const selectedCollection = this.findSelectedCollectionMeta();
-      this.dom.editorForm.hidden = true;
       this.dom.collectionEditorForm.hidden = !selectedCollection;
-      this.dom.editorEmpty.hidden = Boolean(selectedCollection);
+      this.dom.editorEmpty.hidden = Boolean(!selectedCollection);
       if (!selectedCollection) {
         this.dom.editorContext.textContent = 'Select a collection.';
         this.syncEditorVisibility();
@@ -3825,7 +3836,6 @@ class OpenCollectionsManagerElement extends HTMLElement {
     }
 
     this.dom.editorTitle.textContent = 'Item metadata';
-    this.dom.collectionEditorForm.hidden = true;
     const selected = this.findSelectedItem();
     const selectedSource = selected ? this.getSourceById(selected.sourceId) : null;
     const canSave = Boolean(selectedSource?.capabilities?.canSaveMetadata);
