@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Provider and storage implementation | Open Collections Protocol</title>
+		<link rel="stylesheet" href="../../index.css" />
+	</head>
+	<body class="docs-page">
+		<div class="site-header">
+			<div class="site-header-inner">
+				<div class="site-brand">Open Collections Protocol</div>
+				<nav class="site-nav" aria-label="Primary navigation">
+					<a href="../../">Home</a>
+					<a href="./open-collections-protocol.html">Protocol</a>
+					<a href="../tools/">Tools</a>
+					<a href="../storage/">Storage Providers</a>
+					<a href="./" class="is-active" aria-current="page">Documentation</a>
+					<a href="../demo/">Demo</a>
+				</nav>
+			</div>
+		</div>
+		<main>
+			<header>
+				<h1>Provider and storage implementation</h1>
+				<p>
+					Technical implementation guidance for storage/provider integrations used by Collection
+					Manager and related tooling.
+				</p>
+			</header>
+			<section>
+				<h2>Provider packages in this repo</h2>
+				<ul>
+					<li><code>src/packages/provider-core</code> — shared provider interface</li>
+					<li><code>src/packages/provider-local</code> — local provider</li>
+					<li><code>src/packages/provider-public-url</code> — public URL provider</li>
+					<li><code>src/packages/provider-github</code> — GitHub provider</li>
+					<li><code>src/packages/provider-gdrive</code> — Google Drive provider</li>
+				</ul>
+			</section>
+			<section>
+				<h2>Implementation priorities</h2>
+				<ul>
+					<li>consistent read/write contract per provider</li>
+					<li>stable publish paths for manifest, item files, and media</li>
+					<li>clear error reporting for auth, permissions, and missing paths</li>
+					<li>portable outputs independent of provider internals</li>
+				</ul>
+			</section>
+			<section>
+				<h2>Related technical docs</h2>
+				<ul>
+					<li><a href="../../docs/provider-and-storage-implementation.md">Provider and storage implementation (Markdown)</a></li>
+					<li><a href="../../docs/collection-manifest-spec.md">Collection manifest spec</a></li>
+					<li><a href="../storage/">Storage Providers overview</a></li>
+				</ul>
+			</section>
+		</main>
+	</body>
+</html>

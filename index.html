@@ -26,30 +26,30 @@
 				<p class="eyebrow">Open Collections Protocol</p>
 				<h1>Publish and discover collections like the web</h1>
 				<p class="lead">
-					Open Collections Protocol is a lightweight, web-native way to publish and
-					discover collections as ordinary web resources.
+					Open Collections Protocol is the umbrella public framework for publishing and
+					discovering collections as ordinary web resources.
 				</p>
 				<p>
-					Collection Manager and Collection Browser help teams edit, publish, and view
-					collections as standalone tools or embeddable web components.
+					LinkedCollections provides the architecture, and Domain Collections Discovery
+					(DCD) provides domain-level discovery.
 				</p>
 				<div class="cta-row" aria-label="Primary calls to action">
 					<a class="button-link" href="./site/docs/open-collections-protocol.html">Read the protocol</a>
 					<a class="button-link button-link-secondary" href="./site/tools/">Explore tools</a>
-					<a class="button-link button-link-secondary" href="./site/storage/">Compare storage options</a>
+					<a class="button-link button-link-secondary" href="./site/docs/publish-a-collection.html">Publish a collection</a>
 				</div>
 			</header>
 
 			<section>
-				<h2>Collections should be easier to publish</h2>
+				<h2>Built for practical publishing</h2>
 				<p>
-					Open Collections Protocol is built for institutions and community teams that
-					want practical publishing, not platform lock-in.
+					This ecosystem is designed for museums, archives, libraries, local history groups,
+					community curators, and tool builders who want a practical path to open
+					collection publishing.
 				</p>
 				<p>
-					You can host published collections with common storage providers, including
-					Git-based platforms and S3-compatible object storage, without relying on one
-					central system.
+					You can publish with familiar storage providers and keep control of your domain,
+					rather than depending on one central platform.
 				</p>
 			</section>
 
@@ -58,51 +58,40 @@
 				<div class="steps-grid">
 					<article class="step-card">
 						<h3>1. Publish a collection manifest</h3>
-						<p>Give the collection a stable web URL and a machine-readable manifest.</p>
+						<p>Give the collection a stable URL with a machine-readable <code>collection.json</code>.</p>
 					</article>
 					<article class="step-card">
 						<h3>2. Link item and media URLs</h3>
-						<p>Each item and asset has a stable address that tools and people can reference.</p>
+						<p>Each item and asset keeps an addressable URL for reuse and long-term reference.</p>
 					</article>
 					<article class="step-card">
 						<h3>3. Add domain discovery (optional)</h3>
-						<p>Publish a Domain Collections Discovery (DCD) document to advertise collections from a domain.</p>
+						<p>Publish a DCD document at <code>/.well-known/collections.json</code>.</p>
 					</article>
 					<article class="step-card">
 						<h3>4. Reuse across the ecosystem</h3>
-						<p>Indexers, browsers, portals, and aggregators can all use the same published surface.</p>
+						<p>Registry, indexer, browser, and TimeMap tools can consume the same web surface.</p>
 					</article>
 				</div>
 			</section>
 
 			<section>
-				<h2>Many tools, one shared web surface</h2>
-				<p>
-					LinkedCollections is the architectural model behind the protocol, and
-					Domain Collections Discovery (DCD) supports domain-level discovery.
-				</p>
+				<h2>Many tools, one shared protocol</h2>
 				<div class="link-grid">
-					<div class="link-card"><strong>Publisher</strong><br />Publishes collection manifests, item resources, and media to the open web.</div>
-					<div class="link-card"><strong>Collection Manager</strong><br />Create, edit, organize, and publish collections.</div>
-					<div class="link-card"><strong>Registrator</strong><br />Register, validate, or curate collection endpoints.</div>
-					<div class="link-card"><strong>Indexer</strong><br />Discover and organize collections for search and aggregation.</div>
-					<div class="link-card"><strong>Collection Browser / TimeMap</strong><br />Explore collections through general browsing or interpretive interfaces.</div>
+					<div class="link-card"><strong>Collection Manager</strong><br />Edit and publish collections as a standalone tool or embeddable component.</div>
+					<div class="link-card"><strong>Collection Browser</strong><br />Browse published collections as a standalone tool or embeddable component.</div>
+					<div class="link-card"><strong>Collection Registry</strong><br />Public-facing registry for known collections and publishers.</div>
+					<div class="link-card"><strong>Registrator</strong><br />Internal architectural term for the Collection Registry module.</div>
+					<div class="link-card"><strong>Collection Indexer</strong><br />Indexes published collections for search and discovery workflows.</div>
+					<div class="link-card"><strong>TimeMap</strong><br />Exploratory presentation layer for navigating collections through time and context.</div>
 				</div>
-				<p>
-					Collection Manager and Collection Browser can work both as standalone tools and as
-					embeddable components inside websites, portals, and custom applications.
-				</p>
 			</section>
 
 			<section>
-				<h2>Open, portable, and web-native</h2>
-				<p>
-					Publish once on the open web, keep control of your own domain and hosting,
-					and let many tools interoperate with the same collection resources.
-				</p>
+				<h2>Start with the path that fits you</h2>
 				<div class="cta-row" aria-label="Closing calls to action">
-					<a class="button-link" href="./site/docs/open-collections-protocol.html">Protocol</a>
-					<a class="button-link button-link-secondary" href="./site/docs/">Documentation</a>
+					<a class="button-link" href="./site/docs/">Documentation landing</a>
+					<a class="button-link button-link-secondary" href="./site/storage/">Storage guidance</a>
 					<a class="button-link button-link-secondary" href="./site/demo/">Demo</a>
 				</div>
 			</section>

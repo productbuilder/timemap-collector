@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Components and embedding | Open Collections Protocol</title>
+		<link rel="stylesheet" href="../../index.css" />
+	</head>
+	<body class="docs-page">
+		<div class="site-header">
+			<div class="site-header-inner">
+				<div class="site-brand">Open Collections Protocol</div>
+				<nav class="site-nav" aria-label="Primary navigation">
+					<a href="../../">Home</a>
+					<a href="./open-collections-protocol.html">Protocol</a>
+					<a href="../tools/">Tools</a>
+					<a href="../storage/">Storage Providers</a>
+					<a href="./" class="is-active" aria-current="page">Documentation</a>
+					<a href="../demo/">Demo</a>
+				</nav>
+			</div>
+		</div>
+		<main>
+			<header>
+				<h1>Components and embedding</h1>
+				<p>
+					Collection Manager and Collection Browser can be used as standalone applications or
+					embedded components inside websites, portals, and CMS workflows.
+				</p>
+			</header>
+			<section>
+				<h2>Embedding goals</h2>
+				<ul>
+					<li>reuse core publishing/browsing behavior across multiple sites</li>
+					<li>keep protocol outputs independent from host platform internals</li>
+					<li>configure behavior through clear attributes/options</li>
+				</ul>
+			</section>
+			<section>
+				<h2>Current implementation pointers</h2>
+				<ul>
+					<li><a href="../../src/apps/collector/README.md">Collection Manager app README</a></li>
+					<li><a href="../../src/apps/browser/README.md">Collection Browser app README</a></li>
+					<li><a href="../demo/">Demo page with embedded Collection Manager</a></li>
+				</ul>
+			</section>
+			<section>
+				<h2>Recommended embedding checklist</h2>
+				<ul>
+					<li>define allowed sources/providers in host context</li>
+					<li>set clear read/write permission boundaries</li>
+					<li>validate generated URLs and manifests against protocol expectations</li>
+				</ul>
+			</section>
+		</main>
+	</body>
+</html>

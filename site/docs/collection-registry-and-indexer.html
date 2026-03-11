@@ -22,145 +22,65 @@
 		</div>
 		<main>
 			<header>
-				<h1>Collection Registry (Registrator) and Collection Indexer</h1>
+				<h1>Collection Registry and Collection Indexer</h1>
 				<p>
-					Collection Registry keeps track of what is known. Collection Indexer turns what is known
-					into something searchable and explorable. WordPress can be one practical path for
-					publishing and participating in that ecosystem.
+					These tools are related but distinct. Registry tracks what is known; Indexer processes
+					what is known into discovery/search outputs.
 				</p>
 			</header>
 
 			<section>
-				<h2>Collection Registry in plain terms</h2>
+				<h2>Collection Registry (public term)</h2>
 				<p>
-					Collection Registry is a lightweight persistent tool for tracking known publishers,
-					collections, and registries. <strong>Registrator</strong> is the internal architectural module name.
-				</p>
-				<p>
-					It is not the same as Collection Indexer, and it does not need to start as a large,
-					internet-scale backend.
+					Collection Registry is the public-facing tool name. <strong>Registrator</strong> is the
+					internal architectural term used for this module.
 				</p>
 				<ul>
-					<li>Tracks what is known</li>
-					<li>Tracks validation and indexing state</li>
-					<li>Supports linked registries and federation</li>
+					<li>register publishers and collection endpoints</li>
+					<li>track validation and indexing state</li>
+					<li>federate or link with other registries</li>
+					<li>preserve provenance for imported records</li>
 				</ul>
 			</section>
 
 			<section>
-				<h2>What Collection Registry stores</h2>
+				<h2>Collection Indexer</h2>
 				<ul>
-					<li>publishers</li>
-					<li>collection registrations</li>
-					<li>registry registrations</li>
-					<li>validation records</li>
-					<li>index jobs / indexing state references</li>
+					<li>fetch manifests and item records from known collection URLs</li>
+					<li>create searchable/browsable derived indexes</li>
+					<li>refresh on schedule or by event/job triggers</li>
+					<li>feed Browser, TimeMap, and aggregator experiences</li>
 				</ul>
 			</section>
 
 			<section>
-				<h2>Why Collection Registry exists</h2>
+				<h2>How they work together</h2>
 				<p>
-					Collection owners, institutions, and communities need a practical way to register and keep track
-					of known collections.
+					A single deployment may host both Registry and Indexer in early phases. The architecture
+					still keeps them conceptually separate:
 				</p>
-				<p>
-					Registries can be local, thematic, institutional, national, or global. They can link to each other,
-					which supports discovery without requiring one central platform.
-				</p>
-			</section>
-
-			<section>
-				<h2>Minimal persistence and deployment model</h2>
-				<p>Recommended lightweight-first model:</p>
 				<ul>
-					<li>SQLite-backed persistence</li>
-					<li>JSON export/import</li>
-					<li>optional published <code>registry.json</code></li>
-					<li>no heavy database server required at first</li>
-				</ul>
-				<p>Simplest deployment:</p>
-				<ul>
-					<li>one small web app</li>
-					<li>one SQLite file on disk</li>
-					<li>one domain or subdomain</li>
-					<li>optional reverse proxy and scheduled backups</li>
+					<li>Registry = authoritative list and status records.</li>
+					<li>Indexer = derived processing and retrieval outputs.</li>
 				</ul>
 			</section>
 
 			<section>
-				<h2>Implementation options</h2>
-				<h3>Go binary option</h3>
+				<h2>Practical deployment baseline</h2>
 				<ul>
-					<li>build Collection Registry as a Go application</li>
-					<li>distribute a standalone binary</li>
-					<li>prebuilt binaries avoid requiring users to install Go</li>
-					<li>SQLite fits naturally for file-based persistence</li>
-				</ul>
-				<p>
-					This is a strong self-hosted path with low infrastructure burden and easy backups.
-				</p>
-				<h3>Container option</h3>
-				<ul>
-					<li>run Collection Registry in a container</li>
-					<li>mount persistent storage for SQLite/data files</li>
-					<li>expose the UI/API through a domain</li>
-				</ul>
-				<p>
-					This avoids requiring Node or Go on the host, but does require a container runtime.
-				</p>
-				<h3>Hosted option (later)</h3>
-				<p>
-					A shared hosted registry service can exist later, but it is not required for the core design.
-				</p>
-			</section>
-
-			<section>
-				<h2>Collection Indexer relationship</h2>
-				<p>
-					Collection Registry keeps track of known things. Collection Indexer processes known collections.
-				</p>
-				<p>
-					Collection Indexer processes manifests, item metadata, media references, and creates derived browse/search structures.
-				</p>
-				<p>
-					They can run together in one early app deployment, while remaining separate in architecture and data model.
-				</p>
-			</section>
-
-			<section>
-				<h2>Linked registries and federation</h2>
-				<ul>
-					<li>a registry can register other registries</li>
-					<li>a registry can link to another registry</li>
-					<li>a registry can harvest summary data from another registry</li>
-					<li>a registry can optionally mirror another registry</li>
-				</ul>
-				<p>
-					When importing records from another registry, provenance should be preserved.
-				</p>
-			</section>
-
-			<section>
-				<h2>Indexing modes</h2>
-				<ul>
-					<li>registry-driven indexing</li>
-					<li>scheduled refresh of known records</li>
-					<li>optional broader discovery later</li>
+					<li>SQLite-backed persistence for Registry data</li>
+					<li>scheduled jobs for indexing refresh</li>
+					<li>JSON export/import and optional published <code>registry.json</code></li>
+					<li>growth path from local to institutional to federated deployments</li>
 				</ul>
 			</section>
 
 			<section>
-				<h2>Starter data model and status vocabularies</h2>
-				<p>
-					See the full examples and starter status vocabularies in the technical reference:
-					<a href="../../docs/collection-registry-and-indexer.md">collection-registry-and-indexer.md</a>.
-				</p>
-				<p>Status sets:</p>
+				<h2>Related pages</h2>
 				<ul>
-					<li>Collection registration: <code>draft</code>, <code>pending_validation</code>, <code>active</code>, <code>inactive</code>, <code>error</code></li>
-					<li>Validation: <code>unknown</code>, <code>valid</code>, <code>warning</code>, <code>invalid</code></li>
-					<li>Indexing: <code>not_indexed</code>, <code>pending</code>, <code>indexed</code>, <code>partial</code>, <code>failed</code></li>
+					<li><a href="./wordpress-integration.html">WordPress integration</a></li>
+					<li><a href="../../docs/collection-registry-and-indexer.md">Technical reference (Markdown)</a></li>
+					<li><a href="../tools/">Tools overview</a></li>
 				</ul>
 			</section>
 		</main>

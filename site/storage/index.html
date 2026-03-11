@@ -25,182 +25,62 @@
 			<header>
 				<h1>Storage Providers</h1>
 				<p>
-					A collection needs somewhere to live online.
+					Open Collections Protocol does not require one hosting platform. Publish collections
+					using storage choices that fit your team while keeping stable public URLs.
 				</p>
-				<p>
-					Open Collections Protocol does not require one central platform or one mandatory hosting model.
-					Collections can be published through different kinds of storage providers, as long as the result
-					is a stable web surface with clear URLs, manifests, and assets.
-				</p>
-				<p>For most practical uses, two storage models matter most:</p>
-				<ul>
-					<li>Git-based providers</li>
-					<li>S3-compatible object storage providers</li>
-				</ul>
 			</header>
 
 			<section>
-				<h2>Why storage matters</h2>
-				<p>
-					The protocol is about how collections are published and discovered, not about forcing one
-					internal system.
-				</p>
-				<p>That means you can choose storage based on what fits your situation:</p>
+				<h2>What every storage setup must provide</h2>
 				<ul>
-					<li>how technical your team is</li>
-					<li>how much media you have</li>
-					<li>how much versioning you need</li>
-					<li>how much hosting flexibility you want</li>
-				</ul>
-				<p>The important thing is that the published result remains stable and understandable:</p>
-				<ul>
-					<li>a collection manifest at a URL</li>
-					<li>item detail URLs where needed</li>
-					<li>media assets at URLs</li>
-					<li>optional domain discovery through DCD</li>
+					<li>a stable <code>collection.json</code> URL</li>
+					<li>stable item and media URLs</li>
+					<li>optional DCD discovery file at <code>/.well-known/collections.json</code></li>
+					<li>enough durability for long-term collection access</li>
 				</ul>
 			</section>
 
 			<section>
-				<h2>Git providers</h2>
-				<p><strong>Versioned publishing with familiar web workflows</strong></p>
+				<h2>Git-based providers</h2>
 				<p>
-					Git-based providers are often a good fit for collections that are published as files and
-					updated through a versioned workflow.
+					Good for versioned, file-first publication workflows and small/medium collections.
 				</p>
-				<p>Examples include:</p>
 				<ul>
-					<li>GitHub</li>
-					<li>GitLab</li>
-					<li>Forgejo</li>
-					<li>Gitea</li>
-				</ul>
-				<p>Git-based publishing is especially useful when you want:</p>
-				<ul>
-					<li>transparent version history</li>
-					<li>simple file-based publishing</li>
-					<li>static site hosting workflows</li>
-					<li>easier review of changes</li>
-					<li>a straightforward path for small to medium collections</li>
-				</ul>
-				<p>This can be a practical option for:</p>
-				<ul>
-					<li>documentation-like collections</li>
-					<li>curated public collections</li>
-					<li>pilot projects</li>
-					<li>institutions that want to publish in a transparent and portable way</li>
-				</ul>
-				<p>
-					Git-based publishing can also work well with static hosting and CDN delivery.
-				</p>
-			</section>
-
-			<section>
-				<h2>S3-compatible storage</h2>
-				<p><strong>Scalable object storage for media and assets</strong></p>
-				<p>
-					S3-compatible storage is a strong fit when collections include larger numbers of media assets
-					or need more scalable object storage.
-				</p>
-				<p>Examples include:</p>
-				<ul>
-					<li>AWS S3</li>
-					<li>Cloudflare R2</li>
-					<li>Backblaze B2 with S3 compatibility</li>
-					<li>MinIO</li>
-					<li>Wasabi</li>
-				</ul>
-				<p>S3-style storage is especially useful when you want:</p>
-				<ul>
-					<li>scalable media hosting</li>
-					<li>reliable asset delivery</li>
-					<li>separation between manifests and media</li>
-					<li>CDN-friendly storage patterns</li>
-					<li>more flexibility for larger collections</li>
-				</ul>
-				<p>This is often a good choice for:</p>
-				<ul>
-					<li>image-heavy collections</li>
-					<li>audiovisual material</li>
-					<li>larger institutional collections</li>
-					<li>systems where media storage and metadata publication are handled separately</li>
+					<li>Examples: GitHub, GitLab, Forgejo, Gitea</li>
+					<li>Strengths: version history, review workflows, transparent file changes</li>
+					<li>Typical use: curated public collections and iterative publishing</li>
 				</ul>
 			</section>
 
 			<section>
-				<h2>Git or S3?</h2>
-				<p><strong>Choose the model that fits your publishing needs</strong></p>
-				<p>A simple rule of thumb:</p>
-				<p>Choose <strong>Git-based storage</strong> when:</p>
+				<h2>S3-compatible object storage</h2>
+				<p>
+					Good for larger media workloads and scalable asset delivery.
+				</p>
 				<ul>
-					<li>you want a versioned, file-first workflow</li>
-					<li>your collection is relatively manageable in size</li>
-					<li>you want transparent publishing and easy review of changes</li>
-				</ul>
-				<p>Choose <strong>S3-compatible storage</strong> when:</p>
-				<ul>
-					<li>you have a large number of media files</li>
-					<li>you need scalable asset hosting</li>
-					<li>you expect heavier storage and delivery needs</li>
-				</ul>
-				<p>In many cases, the best answer is a combination:</p>
-				<ul>
-					<li>store collection manifests and structured publication outputs in Git</li>
-					<li>store larger media assets in S3-compatible storage</li>
-					<li>publish both as stable URLs on the web</li>
+					<li>Examples: AWS S3, Cloudflare R2, Backblaze B2 (S3), MinIO, Wasabi</li>
+					<li>Strengths: scalability, CDN-friendly asset hosting, media-heavy collections</li>
+					<li>Typical use: larger institutional datasets and high-volume media delivery</li>
 				</ul>
 			</section>
 
 			<section>
-				<h2>Storage and the protocol</h2>
-				<p>
-					The protocol does not care whether your collection comes from Git, S3, a CMS, or another
-					internal system.
-				</p>
-				<p>What matters is the public result:</p>
+				<h2>Common mixed model</h2>
 				<ul>
-					<li>stable URLs</li>
-					<li>a machine-readable collection manifest</li>
-					<li>item detail resources where needed</li>
-					<li>media assets that can be fetched independently</li>
-					<li>optional domain-level discovery through DCD</li>
+					<li>Store manifests and metadata files in Git-based publishing</li>
+					<li>Store large media in S3-compatible buckets</li>
+					<li>Expose both through stable URLs</li>
 				</ul>
-				<p>
-					This keeps the protocol flexible while still keeping the public web surface consistent.
-				</p>
 			</section>
 
 			<section>
-				<h2>Why this matters for non-technical publishers</h2>
-				<p>
-					Many people want to publish a collection without running a full custom platform.
-				</p>
-				<p>That is why storage choice matters so much.</p>
-				<p>A good storage setup should help you:</p>
+				<h2>Implementation guidance</h2>
 				<ul>
-					<li>get online more easily</li>
-					<li>keep control of your published files</li>
-					<li>avoid unnecessary infrastructure complexity</li>
-					<li>stay portable over time</li>
-				</ul>
-				<p>
-					The protocol supports that by letting collections be hosted in practical, familiar ways
-					rather than forcing everyone into one system.
-				</p>
-			</section>
-			<section>
-				<h2>Storage and implementation paths</h2>
-				<p>
-					WordPress can also be an implementation path for publishing protocol outputs, while
-					Collection Registry (Registrator) and Collection Indexer can run as separate supporting
-					ecosystem tools.
-				</p>
-				<ul>
-					<li><a href="../docs/collection-registry-and-indexer.html">Collection Registry and Collection Indexer</a></li>
+					<li><a href="../docs/publish-a-collection.html">Publish a collection</a></li>
+					<li><a href="../docs/provider-implementation.html">Provider and storage implementation</a></li>
 					<li><a href="../docs/wordpress-integration.html">WordPress integration</a></li>
 				</ul>
 			</section>
-
 		</main>
 	</body>
 </html>

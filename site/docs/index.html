@@ -24,79 +24,46 @@
 			<header>
 				<h1>Documentation</h1>
 				<p>
-					This documentation helps you understand, publish, and integrate collections with
-					Open Collections Protocol.
-				</p>
-				<p>
-					Some pages are written for collection owners and publishers. Others go deeper into
-					technical implementation, components, and integration.
+					Use this page as your starting point for Open Collections Protocol. The top path is
+					plain-language guidance for publishers; deeper links provide implementation detail for
+					developers and integrators.
 				</p>
 			</header>
 
 			<section>
-				<h2>Start here</h2>
-				<p>If you are new to the project, start with these pages:</p>
+				<h2>Start here (non-technical and mixed teams)</h2>
 				<ul>
-					<li><strong>Protocol</strong> — understand the core publishing model</li>
-					<li><strong>Tools</strong> — see which tools help create, publish, and view collections</li>
-					<li><strong>Storage Providers</strong> — understand practical hosting options</li>
-					<li><strong>Demo</strong> — see the tools and components in action</li>
+					<li><a href="./open-collections-protocol.html">Protocol overview</a> — understand the core model and vocabulary.</li>
+					<li><a href="./publish-a-collection.html">Publish a collection</a> — step-by-step path from draft to published URLs.</li>
+					<li><a href="../tools/">Tools</a> — decide when to use Collection Manager, Collection Browser, Registry, Indexer, and TimeMap.</li>
+					<li><a href="../storage/">Storage Providers</a> — choose Git, S3-compatible, or mixed publication strategies.</li>
 				</ul>
 			</section>
 
 			<section>
-				<h2>Publishing a collection</h2>
-				<p>If your goal is to get a collection online, the most important ideas are:</p>
+				<h2>Ecosystem and adoption pages</h2>
 				<ul>
-					<li>create a collection manifest</li>
-					<li>publish items and media at stable URLs</li>
-					<li>choose a storage provider that fits your needs</li>
-					<li>optionally publish a domain discovery file</li>
-				</ul>
-			</section>
-
-			<section>
-				<h2>Tools and components</h2>
-				<p>Open Collections Protocol is supported by tools such as:</p>
-				<ul>
-					<li>Collection Manager</li>
-					<li>Collection Browser</li>
-					<li>Collection Registry (Registrator)</li>
-					<li>Collection Indexer</li>
-					<li>TimeMap</li>
-				</ul>
-				<p>
-					Collection Manager and Collection Browser can also be used as embeddable components
-					inside websites, portals, and other applications.
-				</p>
-			</section>
-
-			<section>
-				<h2>Technical documentation</h2>
-				<p>For technical readers, documentation should also cover:</p>
-				<ul>
-					<li>components and embedding</li>
-					<li>attribute/configuration API</li>
-					<li>manifest structure</li>
-					<li>provider integration</li>
-					<li>publishing workflows</li>
-					<li>examples and demos</li>
-				</ul>
-			</section>
-
-			<section>
-				<h2>Suggested entry points</h2>
-				<ul>
-					<li><a href="./open-collections-protocol.html">Protocol</a></li>
-					<li><a href="../tools/">Tools</a></li>
-					<li><a href="../storage/">Storage Providers</a></li>
 					<li><a href="./collection-registry-and-indexer.html">Collection Registry and Collection Indexer</a></li>
 					<li><a href="./wordpress-integration.html">WordPress integration</a></li>
-					<li><a href="../../src/apps/collector/">Components and Embedding</a></li>
-					<li><a href="../demo/">Publishing Guide</a></li>
-					<li><a href="../../docs/collection-registry-and-indexer.md">Collection Registry and Collection Indexer</a></li>
-					<li><a href="../../docs/wordpress-integration.md">WordPress integration (technical note)</a></li>
-					<li><a href="../../docs/linked-collections-architecture.md">Technical Reference</a></li>
+				</ul>
+			</section>
+
+			<section>
+				<h2>Technical implementation path</h2>
+				<ul>
+					<li><a href="./components-and-embedding.html">Components and embedding</a></li>
+					<li><a href="./provider-implementation.html">Provider and storage implementation</a></li>
+					<li><a href="../../docs/collection-manifest-spec.md">Collection manifest spec (Markdown)</a></li>
+					<li><a href="../../docs/linked-collections-architecture.md">LinkedCollections architecture (Markdown)</a></li>
+					<li><a href="../../docs/collection-registry-and-indexer.md">Collection Registry and Collection Indexer reference (Markdown)</a></li>
+				</ul>
+			</section>
+
+			<section>
+				<h2>Demo and examples</h2>
+				<ul>
+					<li><a href="../demo/">Demo</a> — embedded Collection Manager in a site context.</li>
+					<li><a href="../examples/test-collection/collection.json">Example collection files</a></li>
 				</ul>
 			</section>
 		</main>
