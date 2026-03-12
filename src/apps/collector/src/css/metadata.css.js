@@ -2,36 +2,35 @@ export const metadataStyles = `
   :host {
     display: block;
     min-height: 0;
-  }
-
-  * {
-    box-sizing: border-box;
+    height: 100%;
   }
 
   [hidden] {
     display: none !important;
   }
 
-  .panel {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  * {
+    box-sizing: border-box;
   }
 
   .editor-panel {
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
+    height: 100%;
     min-height: 0;
     overflow: hidden;
+    background: #ffffff;
+    border-left: 1px solid #e2e8f0;
+    border-radius: 0;
+    box-shadow: none;
   }
 
   .panel-header {
     padding: 0.8rem 0.95rem;
     border-bottom: 1px solid #e2e8f0;
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    justify-content: space-between;
     gap: 0.7rem;
   }
 
@@ -42,11 +41,10 @@ export const metadataStyles = `
   }
 
   .editor-header-meta {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    display: grid;
+    gap: 0.15rem;
+    align-content: start;
     min-width: 0;
-    justify-content: flex-end;
   }
 
   .editor-context {
@@ -56,7 +54,12 @@ export const metadataStyles = `
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 200px;
+  }
+
+  .editor-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
 
   .editor-content {
@@ -171,6 +174,10 @@ export const metadataStyles = `
   }
 
   @media (max-width: 760px) {
+    :host {
+      height: auto;
+    }
+
     .editor-panel {
       position: fixed;
       inset: 0;

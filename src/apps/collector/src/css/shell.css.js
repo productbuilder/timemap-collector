@@ -27,10 +27,10 @@ export const shellStyles = `
   .content-grid {
     flex: 1;
     min-height: 0;
-    padding: 0.95rem;
+    padding: 0;
     display: grid;
-    gap: 0.95rem;
-    grid-template-columns: minmax(0, 1fr) 350px;
+    gap: 0rem;
+    grid-template-columns: minmax(0, 1fr) 420px;
     align-items: stretch;
     overflow: hidden;
   }

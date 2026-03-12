@@ -2,17 +2,11 @@ export const browserStyles = `
   :host {
     display: block;
     min-height: 0;
+    padding: 0.95rem;
   }
 
   * {
     box-sizing: border-box;
-  }
-
-  .panel {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   }
 
   .viewport-panel {
@@ -20,23 +14,31 @@ export const browserStyles = `
     grid-template-rows: auto 1fr;
     min-height: 0;
     overflow: hidden;
+    background: transparent;
+    border: none;
+    box-shadow: none;
   }
 
   .panel-header {
-    padding: 0.8rem 0.95rem;
-    border-bottom: 1px solid #e2e8f0;
+    padding: 0.1rem 0 0.65rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 0.7rem;
   }
 
+  .panel-heading-left {
+    display: flex;
+    align-items: baseline;
+    gap: 0.55rem;
+    min-width: 0;
+  }
+
   .panel-header-meta {
     display: flex;
     align-items: center;
-    gap: 0.55rem;
-    flex-wrap: wrap;
-    justify-content: flex-end;
+    gap: 0.45rem;
+    flex-wrap: nowrap;
   }
 
   .panel-title {
@@ -74,24 +76,12 @@ export const browserStyles = `
     flex-wrap: wrap;
   }
 
-  .source-filter {
-    width: 220px;
-    min-width: 220px;
-    max-width: 220px;
-    font: inherit;
-    border: 1px solid #cbd5e1;
-    border-radius: 8px;
-    padding: 0.42rem 0.55rem;
-    background: #ffffff;
-    color: #0f172a;
-  }
-
   .is-hidden {
     display: none;
   }
 
   .asset-wrap {
-    padding: 0.9rem;
+    padding: 0;
     overflow: auto;
     min-height: 0;
     position: relative;
@@ -207,10 +197,8 @@ export const browserStyles = `
   }
 
   @media (max-width: 760px) {
-    .viewport-panel.panel {
-      border: none;
-      background: transparent;
-      box-shadow: none;
+    :host {
+      padding: 0;
     }
 
     .panel-header {
@@ -223,8 +211,6 @@ export const browserStyles = `
     }
 
     .panel-header-meta {
-      width: 100%;
-      justify-content: space-between;
       gap: 0.4rem;
       flex-wrap: nowrap;
     }
@@ -260,9 +246,7 @@ export const browserStyles = `
       padding: 0.26rem 0.44rem;
     }
 
-    #assetCount,
-    #sourceFilter,
-    #collectionFilter {
+    #assetCount {
       display: none;
     }
   }

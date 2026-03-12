@@ -8,10 +8,6 @@ class OpenCollectionsBrowserElement extends HTMLElement {
       currentLevel: 'collections',
       viewportTitle: 'Collections',
       assetCountText: 'No assets loaded.',
-      sourceOptions: [{ value: 'all', label: 'All hosts' }],
-      sourceFilterValue: 'all',
-      collectionOptions: [{ value: 'all', label: 'All collections' }],
-      collectionFilterValue: 'all',
       collections: [],
       items: [],
       selectedCollectionId: null,
@@ -31,14 +27,6 @@ class OpenCollectionsBrowserElement extends HTMLElement {
   bindEvents() {
     this.shadowRoot.getElementById('backToCollectionsBtn')?.addEventListener('click', () => {
       this.dispatch('back-to-collections');
-    });
-
-    this.shadowRoot.getElementById('sourceFilter')?.addEventListener('change', (event) => {
-      this.dispatch('source-filter-change', { value: event.target.value || 'all' });
-    });
-
-    this.shadowRoot.getElementById('collectionFilter')?.addEventListener('change', (event) => {
-      this.dispatch('collection-filter-change', { value: event.target.value || 'all' });
     });
 
     this.shadowRoot.getElementById('addImagesBtn')?.addEventListener('click', () => {
@@ -88,15 +76,15 @@ class OpenCollectionsBrowserElement extends HTMLElement {
   }
 
   setSourceOptions(options, selectedValue = 'all') {
-    this.model.sourceOptions = Array.isArray(options) ? options : [];
-    this.model.sourceFilterValue = selectedValue || 'all';
-    this.renderFilters();
+    // Compatibility no-op: host and collection filters are no longer rendered in this panel.
+    void options;
+    void selectedValue;
   }
 
   setCollectionOptions(options, selectedValue = 'all') {
-    this.model.collectionOptions = Array.isArray(options) ? options : [];
-    this.model.collectionFilterValue = selectedValue || 'all';
-    this.renderFilters();
+    // Compatibility no-op: host and collection filters are no longer rendered in this panel.
+    void options;
+    void selectedValue;
   }
 
   setDropTargetActive(active) {
@@ -158,32 +146,6 @@ class OpenCollectionsBrowserElement extends HTMLElement {
     return image;
   }
 
-  renderFilters() {
-    const sourceFilter = this.shadowRoot?.getElementById('sourceFilter');
-    const collectionFilter = this.shadowRoot?.getElementById('collectionFilter');
-    if (!sourceFilter || !collectionFilter) {
-      return;
-    }
-
-    sourceFilter.innerHTML = '';
-    for (const optionData of this.model.sourceOptions) {
-      const option = document.createElement('option');
-      option.value = optionData.value;
-      option.textContent = optionData.label;
-      sourceFilter.appendChild(option);
-    }
-    sourceFilter.value = this.model.sourceFilterValue || 'all';
-
-    collectionFilter.innerHTML = '';
-    for (const optionData of this.model.collectionOptions) {
-      const option = document.createElement('option');
-      option.value = optionData.value;
-      option.textContent = optionData.label;
-      collectionFilter.appendChild(option);
-    }
-    collectionFilter.value = this.model.collectionFilterValue || 'all';
-  }
-
   renderFrame() {
     const title = this.shadowRoot.getElementById('viewportTitle');
     const backBtn = this.shadowRoot.getElementById('backToCollectionsBtn');
@@ -197,8 +159,6 @@ class OpenCollectionsBrowserElement extends HTMLElement {
     count.textContent = this.model.assetCountText || 'No assets loaded.';
     addBtn.textContent = this.model.currentLevel === 'collections' ? 'Add collection' : 'Add item';
     backBtn.classList.toggle('is-hidden', this.model.currentLevel === 'collections');
-
-    this.renderFilters();
   }
 
   renderGrid() {
@@ -311,18 +271,19 @@ class OpenCollectionsBrowserElement extends HTMLElement {
     this.shadowRoot.innerHTML = `
       <style>${browserStyles}</style>
 
-      <section class="panel viewport-panel" aria-label="Collection browser">
+      <section class="viewport-panel" aria-label="Collection browser">
         <div class="panel-header">
-          <h2 id="viewportTitle" class="panel-title">Collections</h2>
-          <div class="panel-header-meta">
+          <div class="panel-heading-left">
             <button class="btn is-hidden" id="backToCollectionsBtn" type="button">Back</button>
+            <h2 id="viewportTitle" class="panel-title">Collections</h2>
+            <p id="assetCount" class="panel-subtext">No assets loaded.</p>
+          </div>
+          <div class="panel-header-meta">
+            
             <div class="viewport-actions">
               <button class="btn" id="addImagesBtn" type="button">Add item</button>
               <input id="imageFileInput" type="file" accept=".jpg,.jpeg,.png,.webp,.gif" multiple hidden />
             </div>
-            <select id="sourceFilter" class="source-filter" aria-label="Filter assets by source"></select>
-            <select id="collectionFilter" class="source-filter" aria-label="Choose active collection"></select>
-            <p id="assetCount" class="panel-subtext">No assets loaded.</p>
           </div>
         </div>
         <div id="assetWrap" class="asset-wrap">

@@ -26,12 +26,14 @@ class OpenCollectionsMetadataElement extends HTMLElement {
       this.dispatch('close-editor');
     });
 
-    this.shadowRoot.getElementById('saveCollectionBtn')?.addEventListener('click', () => {
-      this.dispatch('save-collection', { patch: this.getCollectionPatch() });
-    });
-
-    this.shadowRoot.getElementById('saveItemBtn')?.addEventListener('click', () => {
-      this.dispatch('save-item', { patch: this.getItemPatch() });
+    this.shadowRoot.getElementById('headerSaveBtn')?.addEventListener('click', () => {
+      if (this.model.mode === 'collection') {
+        this.dispatch('save-collection', { patch: this.getCollectionPatch() });
+        return;
+      }
+      if (this.model.mode === 'item') {
+        this.dispatch('save-item', { patch: this.getItemPatch() });
+      }
     });
   }
 
@@ -97,8 +99,9 @@ class OpenCollectionsMetadataElement extends HTMLElement {
     const empty = this.shadowRoot?.getElementById('editorEmpty');
     const collectionForm = this.shadowRoot?.getElementById('collectionEditorForm');
     const itemForm = this.shadowRoot?.getElementById('editorForm');
+    const headerSaveBtn = this.shadowRoot?.getElementById('headerSaveBtn');
 
-    if (!title || !context || !empty || !collectionForm || !itemForm) {
+    if (!title || !context || !empty || !collectionForm || !itemForm || !headerSaveBtn) {
       return;
     }
 
@@ -106,6 +109,7 @@ class OpenCollectionsMetadataElement extends HTMLElement {
     empty.hidden = true;
     collectionForm.hidden = true;
     itemForm.hidden = true;
+    headerSaveBtn.hidden = true;
 
     if (mode === 'collection') {
       const selected = this.model.collection || null;
@@ -117,6 +121,8 @@ class OpenCollectionsMetadataElement extends HTMLElement {
       }
 
       collectionForm.hidden = false;
+      headerSaveBtn.hidden = false;
+      headerSaveBtn.textContent = 'Save collection';
       context.textContent = selected.id || '';
       this.shadowRoot.getElementById('collectionEditorTitle').value = selected.title || '';
       this.shadowRoot.getElementById('collectionEditorDescription').value = selected.description || '';
@@ -136,6 +142,8 @@ class OpenCollectionsMetadataElement extends HTMLElement {
       }
 
       itemForm.hidden = false;
+      headerSaveBtn.hidden = false;
+      headerSaveBtn.textContent = 'Save item';
       context.textContent = this.model.canSaveItem
         ? `${selected.id} - ${selected.sourceDisplayLabel || selected.sourceLabel}`
         : `${selected.id} - ${selected.sourceDisplayLabel || selected.sourceLabel} (local edits)`;
@@ -151,7 +159,6 @@ class OpenCollectionsMetadataElement extends HTMLElement {
       this.shadowRoot.getElementById('itemSource').value = selected.source || '';
       this.shadowRoot.getElementById('itemTags').value = Array.isArray(selected.tags) ? selected.tags.join(', ') : '';
       this.shadowRoot.getElementById('itemInclude').checked = selected.include !== false;
-      this.shadowRoot.getElementById('saveItemBtn').disabled = false;
       return;
     }
 
@@ -166,9 +173,12 @@ class OpenCollectionsMetadataElement extends HTMLElement {
 
       <aside class="panel editor-panel" aria-label="Metadata editor">
         <div class="panel-header">
-          <h2 id="editorTitle" class="panel-title">Metadata editor</h2>
           <div class="editor-header-meta">
+            <h2 id="editorTitle" class="panel-title">Metadata editor</h2>
             <p id="editorContext" class="editor-context"></p>
+          </div>
+          <div class="editor-header-actions">
+            <button class="btn btn-primary" id="headerSaveBtn" type="button" hidden>Save</button>
             <button class="btn editor-close-btn" id="closeEditorBtn" type="button">Close</button>
           </div>
         </div>
@@ -185,7 +195,6 @@ class OpenCollectionsMetadataElement extends HTMLElement {
               <div class="field-row"><label for="collectionEditorPublisher">Publisher</label><input id="collectionEditorPublisher" type="text" /></div>
               <div class="field-row"><label for="collectionEditorLanguage">Language</label><input id="collectionEditorLanguage" type="text" /></div>
             </div>
-            <button class="btn btn-primary" id="saveCollectionBtn" type="button">Save collection metadata</button>
           </form>
           <form id="editorForm" class="editor-wrap" hidden>
             <div class="editor-section">
@@ -214,7 +223,6 @@ class OpenCollectionsMetadataElement extends HTMLElement {
               <div class="field-row"><label for="itemTags">Tags / Keywords (comma separated)</label><input id="itemTags" type="text" /></div>
             </div>
             <label class="checkbox-row" for="itemInclude"><span>Include in manifest</span><input id="itemInclude" type="checkbox" /></label>
-            <button class="btn btn-primary" id="saveItemBtn" type="button">Save item metadata</button>
           </form>
         </div>
       </aside>
