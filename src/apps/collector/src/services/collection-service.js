@@ -90,7 +90,7 @@ export async function createNewCollectionDraft(manager) {
   }
 
   manager.state.selectedCollectionId = slug;
-  manager.state.metadataMode = 'collection';
+  manager.syncMetadataModeFromState();
   manager.closeDialog(manager.dom.newCollectionDialog);
   manager.renderSourcesList();
   manager.renderSourceFilter();
@@ -112,8 +112,8 @@ export function openCollectionView(manager, collectionId) {
   manager.state.selectedCollectionId = collectionId;
   manager.state.openedCollectionId = collectionId;
   manager.state.currentLevel = 'items';
-  manager.state.metadataMode = 'item';
   manager.state.selectedItemId = null;
+  manager.syncMetadataModeFromState();
   manager.closeMobileEditor();
   manager.renderAssets();
   manager.renderEditor();
@@ -121,9 +121,9 @@ export function openCollectionView(manager, collectionId) {
 
 export function leaveCollectionView(manager) {
   manager.state.currentLevel = 'collections';
-  manager.state.metadataMode = 'collection';
   manager.state.openedCollectionId = null;
   manager.state.selectedItemId = null;
+  manager.syncMetadataModeFromState();
   manager.closeMobileEditor();
   manager.renderAssets();
   manager.renderEditor();

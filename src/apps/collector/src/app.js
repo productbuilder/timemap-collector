@@ -13,6 +13,8 @@ import { makeSourceId, toWorkspaceItemId } from './utils/id-utils.js';
 import './components/manager-header.js';
 import './components/collection-browser.js';
 import './components/metadata-editor.js';
+import './components/source-manager.js';
+import './components/asset-viewer.js';
 import {
   slugifySegment as slugifySegmentUtil,
   hostNameFromPath as hostNameFromPathUtil,
@@ -20,8 +22,6 @@ import {
   joinCollectionRootPath as joinCollectionRootPathUtil,
 } from './utils/path-utils.js';
 import { renderShell } from './render/render-shell.js';
-import * as RenderViewer from './render/render-viewer.js';
-import { renderSourcesList as renderSourcesListUI, renderSourcePicker as renderSourcePickerUI } from './render/render-source-ui.js';
 import * as AssetService from './services/asset-service.js';
 import * as CollectionService from './services/collection-service.js';
 import * as ManifestService from './services/manifest-service.js';
@@ -146,6 +146,8 @@ class OpenCollectionsManagerElement extends HTMLElement {
       managerHeader: root.getElementById('managerHeader'),
       collectionBrowser: root.getElementById('collectionBrowser'),
       metadataEditor: root.getElementById('metadataEditor'),
+      sourceManager: root.getElementById('sourceManager'),
+      assetViewer: root.getElementById('assetViewer'),
       providerDialog: root.getElementById('providerDialog'),
       sourcePickerDialog: root.getElementById('sourcePickerDialog'),
       sourcePickerList: root.getElementById('sourcePickerList'),
@@ -156,41 +158,6 @@ class OpenCollectionsManagerElement extends HTMLElement {
       openRegisterFromMenuBtn: root.getElementById('openRegisterFromMenuBtn'),
       openSourcePickerFromMenuBtn: root.getElementById('openSourcePickerFromMenuBtn'),
       storageOptionsDialog: root.getElementById('storageOptionsDialog'),
-      assetViewerDialog: root.getElementById('assetViewerDialog'),
-      closeViewerBtn: root.getElementById('closeViewerBtn'),
-      viewerTitle: root.getElementById('viewerTitle'),
-      viewerMedia: root.getElementById('viewerMedia'),
-      viewerDescription: root.getElementById('viewerDescription'),
-      viewerBadges: root.getElementById('viewerBadges'),
-      viewerOpenOriginal: root.getElementById('viewerOpenOriginal'),
-      providerCatalog: root.getElementById('providerCatalog'),
-      sourceList: root.getElementById('sourceList'),
-      openStorageOptionsBtn: root.getElementById('openStorageOptionsBtn'),
-      providerConfigTitle: root.getElementById('providerConfigTitle'),
-      githubConfig: root.getElementById('githubConfig'),
-      githubToken: root.getElementById('githubToken'),
-      githubOwner: root.getElementById('githubOwner'),
-      githubRepo: root.getElementById('githubRepo'),
-      githubBranch: root.getElementById('githubBranch'),
-      githubPath: root.getElementById('githubPath'),
-      publicUrlConfig: root.getElementById('publicUrlConfig'),
-      publicUrlInput: root.getElementById('publicUrlInput'),
-      gdriveConfig: root.getElementById('gdriveConfig'),
-      gdriveSourceMode: root.getElementById('gdriveSourceMode'),
-      gdriveAuthConfig: root.getElementById('gdriveAuthConfig'),
-      gdrivePublicConfig: root.getElementById('gdrivePublicConfig'),
-      gdriveUrlInput: root.getElementById('gdriveUrlInput'),
-      gdriveClientIdInput: root.getElementById('gdriveClientIdInput'),
-      gdriveFileIdInput: root.getElementById('gdriveFileIdInput'),
-      gdriveConnectAuthBtn: root.getElementById('gdriveConnectAuthBtn'),
-      gdriveAccessTokenInput: root.getElementById('gdriveAccessTokenInput'),
-      gdriveAuthStatus: root.getElementById('gdriveAuthStatus'),
-      localConfig: root.getElementById('localConfig'),
-      localPathInput: root.getElementById('localPathInput'),
-      placeholderConfig: root.getElementById('placeholderConfig'),
-      connectBtn: root.getElementById('connectBtn'),
-      connectionStatus: root.getElementById('connectionStatus'),
-      capabilities: root.getElementById('capabilities'),
       collectionId: root.getElementById('collectionId'),
       collectionTitle: root.getElementById('collectionTitle'),
       collectionDescription: root.getElementById('collectionDescription'),
@@ -215,8 +182,12 @@ class OpenCollectionsManagerElement extends HTMLElement {
       manifestPreview: root.getElementById('manifestPreview'),
     };
 
-    this.dom.localPathInput.value = COLLECTOR_CONFIG.defaultLocalManifestPath;
-    this.dom.gdriveClientIdInput.value = COLLECTOR_CONFIG.googleDriveOAuth?.clientId || '';
+    this.dom.sourceManager?.setConfigValues({
+      localPathInput: COLLECTOR_CONFIG.defaultLocalManifestPath,
+      gdriveClientIdInput: COLLECTOR_CONFIG.googleDriveOAuth?.clientId || '',
+      githubBranch: 'main',
+    });
+    this.dom.sourceManager?.setGoogleDriveAuthStatus('Disconnected.', 'neutral');
     this.dom.collectionId.value = COLLECTOR_CONFIG.defaultCollectionMeta.id;
     this.dom.collectionTitle.value = COLLECTOR_CONFIG.defaultCollectionMeta.title;
     this.dom.collectionDescription.value = COLLECTOR_CONFIG.defaultCollectionMeta.description;
@@ -235,7 +206,52 @@ class OpenCollectionsManagerElement extends HTMLElement {
 
     this.dom.managerHeader.addEventListener('open-host-manager', () => this.openDialog(this.dom.providerDialog));
     this.dom.managerHeader.addEventListener('open-header-menu', () => this.openDialog(this.dom.headerMenuDialog));
-    this.dom.openStorageOptionsBtn.addEventListener('click', () => this.openDialog(this.dom.storageOptionsDialog));
+    this.dom.sourceManager.addEventListener('open-storage-options', () => this.openDialog(this.dom.storageOptionsDialog));
+    this.dom.sourceManager.addEventListener('select-provider', (event) => {
+      const providerId = event.detail?.providerId || '';
+      if (providerId) {
+        this.setSelectedProvider(providerId);
+      }
+    });
+    this.dom.sourceManager.addEventListener('connect-provider', async () => {
+      await this.connectCurrentProvider();
+    });
+    this.dom.sourceManager.addEventListener('refresh-source', async (event) => {
+      const sourceId = event.detail?.sourceId || '';
+      if (sourceId) {
+        await this.refreshSource(sourceId);
+      }
+    });
+    this.dom.sourceManager.addEventListener('inspect-source', (event) => {
+      const sourceId = event.detail?.sourceId || '';
+      if (sourceId) {
+        this.inspectSource(sourceId);
+      }
+    });
+    this.dom.sourceManager.addEventListener('remove-source', (event) => {
+      const sourceId = event.detail?.sourceId || '';
+      if (sourceId) {
+        this.removeSource(sourceId);
+      }
+    });
+    this.dom.sourceManager.addEventListener('show-only-source', (event) => {
+      const sourceId = event.detail?.sourceId || '';
+      if (!sourceId) {
+        return;
+      }
+      this.state.activeSourceFilter = sourceId;
+      this.renderSourceFilter();
+      const visible = this.getVisibleAssets();
+      this.state.selectedItemId = visible[0]?.workspaceId || null;
+      this.renderAssets();
+      this.renderEditor();
+    });
+    this.dom.sourceManager.addEventListener('gdrive-mode-change', () => {
+      this.renderGoogleDriveMode();
+    });
+    this.dom.sourceManager.addEventListener('gdrive-connect-auth', async () => {
+      await this.connectGoogleDriveAuth();
+    });
     this.dom.openSourcePickerFromMenuBtn.addEventListener('click', () => {
       this.closeDialog(this.dom.headerMenuDialog);
       this.renderSourcePicker();
@@ -247,24 +263,17 @@ class OpenCollectionsManagerElement extends HTMLElement {
     });
     this.dom.collectionBrowser.addEventListener('back-to-collections', () => this.leaveCollectionView());
     this.dom.metadataEditor.addEventListener('close-editor', () => this.closeMobileEditor());
-    this.dom.closeViewerBtn.addEventListener('click', () => this.closeViewer());
-    this.dom.assetViewerDialog.addEventListener('close', () => {
-      this.state.viewerItemId = null;
-    });
-    this.dom.assetViewerDialog.addEventListener('cancel', () => {
+    this.dom.assetViewer.addEventListener('close-viewer', () => {
       this.state.viewerItemId = null;
     });
     this.dom.collectionBrowser.addEventListener('source-filter-change', (event) => {
       this.state.activeSourceFilter = event.detail?.value || 'all';
       this.state.selectedCollectionId = 'all';
-      const visible = this.getVisibleAssets();
-      if (this.state.selectedItemId && !visible.some((item) => item.workspaceId === this.state.selectedItemId)) {
-        this.state.selectedItemId = visible[0]?.workspaceId || null;
-      }
-      this.renderCollectionFilter();
       this.state.currentLevel = 'collections';
-      this.state.metadataMode = 'collection';
       this.state.openedCollectionId = null;
+      this.state.selectedItemId = null;
+      this.renderCollectionFilter();
+      this.syncMetadataModeFromState();
       this.closeMobileEditor();
       this.renderSourceContext();
       this.renderAssets();
@@ -275,11 +284,18 @@ class OpenCollectionsManagerElement extends HTMLElement {
     });
     this.dom.collectionBrowser.addEventListener('collection-filter-change', (event) => {
       this.state.selectedCollectionId = event.detail?.value || 'all';
-      this.state.metadataMode = this.state.currentLevel === 'collections' ? 'collection' : 'item';
-      const visible = this.getVisibleAssets();
-      if (this.state.selectedItemId && !visible.some((item) => item.workspaceId === this.state.selectedItemId)) {
-        this.state.selectedItemId = visible[0]?.workspaceId || null;
+      if (this.state.currentLevel === 'items') {
+        if (this.state.selectedCollectionId === 'all') {
+          this.state.currentLevel = 'collections';
+          this.state.openedCollectionId = null;
+          this.state.selectedItemId = null;
+          this.closeMobileEditor();
+        } else if (this.state.openedCollectionId !== this.state.selectedCollectionId) {
+          this.state.openedCollectionId = this.state.selectedCollectionId;
+          this.state.selectedItemId = null;
+        }
       }
+      this.syncMetadataModeFromState();
       this.renderAssets();
       this.renderEditor();
       if (this.state.opfsAvailable) {
@@ -288,7 +304,10 @@ class OpenCollectionsManagerElement extends HTMLElement {
     });
     this.dom.collectionBrowser.addEventListener('collection-select', (event) => {
       this.state.selectedCollectionId = event.detail?.collectionId || 'all';
-      this.state.metadataMode = 'collection';
+      this.state.currentLevel = 'collections';
+      this.state.openedCollectionId = null;
+      this.state.selectedItemId = null;
+      this.syncMetadataModeFromState();
       this.renderAssets();
       this.renderEditor();
       if (this.isMobileViewport()) {
@@ -334,18 +353,6 @@ class OpenCollectionsManagerElement extends HTMLElement {
         const dialogId = button.getAttribute('data-close');
         this.closeDialog(this.shadow.getElementById(dialogId));
       });
-    });
-
-    this.dom.connectBtn.addEventListener('click', async () => {
-      await this.connectCurrentProvider();
-    });
-
-    this.dom.gdriveSourceMode.addEventListener('change', () => {
-      this.renderGoogleDriveMode();
-    });
-
-    this.dom.gdriveConnectAuthBtn.addEventListener('click', async () => {
-      await this.connectGoogleDriveAuth();
     });
     this.dom.newCollectionTitle.addEventListener('input', () => {
       const currentSlug = (this.dom.newCollectionSlug.value || '').trim();
@@ -439,40 +446,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
   }
 
   renderProviderCatalog() {
-    this.dom.providerCatalog.innerHTML = '';
-
-    for (const entry of this.providerCatalog) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'provider-card';
-      button.dataset.providerId = entry.id;
-      button.disabled = entry.enabled === false;
-
-      if (entry.enabled === false) {
-        button.classList.add('is-disabled');
-      }
-
-      if (this.state.selectedProviderId === entry.id) {
-        button.classList.add('is-selected');
-      }
-
-      button.innerHTML = `
-        <div class="provider-card-label-row">
-          <strong>${entry.label}</strong>
-          <span class="pill ${entry.enabled === false ? 'is-muted' : ''}">${entry.statusLabel || 'Available'}</span>
-        </div>
-        <span class="panel-subtext">${entry.description || ''}</span>
-      `;
-
-      button.addEventListener('click', () => {
-        if (entry.enabled === false) {
-          return;
-        }
-        this.setSelectedProvider(entry.id);
-      });
-
-      this.dom.providerCatalog.appendChild(button);
-    }
+    this.dom.sourceManager?.setProviderCatalog(this.providerCatalog);
   }
 
   setSelectedProvider(providerId) {
@@ -482,49 +456,17 @@ class OpenCollectionsManagerElement extends HTMLElement {
     }
 
     this.state.selectedProviderId = providerId;
-
-    this.shadow.querySelectorAll('.provider-card').forEach((card) => {
-      card.classList.toggle('is-selected', card.dataset.providerId === providerId);
-    });
-
-    this.dom.providerConfigTitle.textContent = `${selected.label} host configuration`;
-    this.dom.githubConfig.classList.add('is-hidden');
-    this.dom.publicUrlConfig.classList.add('is-hidden');
-    this.dom.gdriveConfig.classList.add('is-hidden');
-    this.dom.localConfig.classList.add('is-hidden');
-    this.dom.placeholderConfig.classList.add('is-hidden');
-
-    if (providerId === 'github') {
-      this.dom.githubConfig.classList.remove('is-hidden');
-    } else if (providerId === 'gdrive') {
-      this.dom.gdriveConfig.classList.remove('is-hidden');
+    this.dom.sourceManager?.setSelectedProvider(providerId);
+    if (providerId === 'gdrive') {
       this.renderGoogleDriveMode();
-    } else if (providerId === 'public-url') {
-      this.dom.publicUrlConfig.classList.remove('is-hidden');
-    } else if (providerId === 'local') {
-      this.dom.localConfig.classList.remove('is-hidden');
-    } else {
-      this.dom.placeholderConfig.classList.remove('is-hidden');
     }
-
-    this.dom.connectBtn.disabled = selected.enabled === false;
     this.renderCapabilities(this.providerFactories[providerId]?.getCapabilities?.() || selected.capabilities || {});
   }
 
   renderGoogleDriveMode() {
-    const mode = this.dom.gdriveSourceMode.value || 'auth-manifest-file';
+    this.dom.sourceManager?.renderGoogleDriveMode();
+    const mode = this.dom.sourceManager?.getGoogleDriveSourceMode() || 'auth-manifest-file';
     const isAuthMode = mode === 'auth-manifest-file';
-    this.dom.gdriveAuthConfig.classList.toggle('is-hidden', !isAuthMode);
-    this.dom.gdrivePublicConfig.classList.toggle('is-hidden', isAuthMode);
-    if (isAuthMode) {
-      if (!this.dom.gdriveAuthStatus.textContent.trim()) {
-        this.dom.gdriveAuthStatus.textContent = 'Disconnected.';
-      }
-    } else {
-      this.dom.gdriveAuthStatus.textContent = 'Public shared URL mode selected.';
-      this.dom.gdriveAccessTokenInput.value = '';
-    }
-
     if (this.state.selectedProviderId === 'gdrive') {
       this.renderCapabilities({
         canListAssets: true,
@@ -537,23 +479,18 @@ class OpenCollectionsManagerElement extends HTMLElement {
   }
 
   setGoogleDriveAuthStatus(text, tone = 'neutral') {
-    const colors = {
-      neutral: '#64748b',
-      ok: '#166534',
-      warn: '#9a3412',
-    };
-    this.dom.gdriveAuthStatus.textContent = text;
-    this.dom.gdriveAuthStatus.style.color = colors[tone] || colors.neutral;
+    this.dom.sourceManager?.setGoogleDriveAuthStatus(text, tone);
   }
 
   async connectGoogleDriveAuth() {
-    const sourceMode = this.dom.gdriveSourceMode.value || 'auth-manifest-file';
+    const gdriveConfig = this.dom.sourceManager?.getProviderConfig('gdrive') || {};
+    const sourceMode = gdriveConfig.sourceMode || 'auth-manifest-file';
     if (sourceMode !== 'auth-manifest-file') {
       this.setGoogleDriveAuthStatus('Switch to authenticated mode to connect Google Drive.', 'warn');
       return;
     }
 
-    const clientId = this.dom.gdriveClientIdInput.value.trim();
+    const clientId = (gdriveConfig.oauthClientId || '').trim();
     if (!clientId) {
       this.setGoogleDriveAuthStatus('Enter a Google OAuth Client ID to start authentication.', 'warn');
       return;
@@ -567,7 +504,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
         scope: COLLECTOR_CONFIG.googleDriveOAuth?.scope || 'https://www.googleapis.com/auth/drive.readonly',
       });
 
-      this.dom.gdriveAccessTokenInput.value = tokenResult.accessToken || '';
+      this.dom.sourceManager?.setConfigValues({ gdriveAccessTokenInput: tokenResult.accessToken || '' });
       this.setGoogleDriveAuthStatus('Connected. Access token is loaded for this session.', 'ok');
       this.setConnectionStatus('Google Drive authentication completed for this session.', 'ok');
       this.setStatus('Google Drive authenticated. Add source to load the selected manifest file.', 'ok');
@@ -584,14 +521,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
 
   setConnectionStatus(text, tone = false) {
     const resolvedTone = typeof tone === 'boolean' ? (tone ? 'ok' : 'warn') : tone;
-    const colors = {
-      neutral: '#64748b',
-      ok: '#166534',
-      warn: '#9a3412',
-    };
-
-    this.dom.connectionStatus.textContent = text;
-    this.dom.connectionStatus.style.color = colors[resolvedTone] || colors.neutral;
+    this.dom.sourceManager?.setConnectionStatus(text, resolvedTone);
   }
 
   setLocalDraftStatus(text, tone = 'neutral') {
@@ -884,7 +814,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
       typeof capabilitiesOrProvider?.getCapabilities === 'function'
         ? capabilitiesOrProvider.getCapabilities()
         : capabilitiesOrProvider || {};
-    this.dom.capabilities.textContent = JSON.stringify(capabilities, null, 2);
+    this.dom.sourceManager?.setCapabilities(capabilities);
   }
 
   getSourceById(sourceId) {
@@ -956,37 +886,17 @@ class OpenCollectionsManagerElement extends HTMLElement {
   }
 
   renderSourcesList() {
-    return renderSourcesListUI(this);
+    this.dom.sourceManager?.setSources(this.state.sources);
   }
 
   collectCurrentProviderConfig(providerId) {
-    const config = {};
-
+    const config = this.dom.sourceManager?.getProviderConfig(providerId) || {};
     if (providerId === 'local') {
-      config.path = this.dom.localPathInput.value.trim() || COLLECTOR_CONFIG.defaultLocalManifestPath;
+      config.path = (config.path || '').trim() || COLLECTOR_CONFIG.defaultLocalManifestPath;
     }
-
-    if (providerId === 'public-url') {
-      config.manifestUrl = this.dom.publicUrlInput.value.trim();
-    }
-
     if (providerId === 'gdrive') {
-      config.sourceMode = this.dom.gdriveSourceMode.value || 'auth-manifest-file';
-      config.manifestUrl = this.dom.gdriveUrlInput.value.trim();
-      config.fileId = this.dom.gdriveFileIdInput.value.trim();
-      config.accessToken = this.dom.gdriveAccessTokenInput.value.trim();
-      config.oauthClientId = this.dom.gdriveClientIdInput.value.trim();
       config.oauthScopes = COLLECTOR_CONFIG.googleDriveOAuth?.scope || 'https://www.googleapis.com/auth/drive.readonly';
     }
-
-    if (providerId === 'github') {
-      config.token = this.dom.githubToken.value;
-      config.owner = this.dom.githubOwner.value;
-      config.repo = this.dom.githubRepo.value;
-      config.branch = this.dom.githubBranch.value;
-      config.path = this.dom.githubPath.value;
-    }
-
     return config;
   }
 
@@ -1295,7 +1205,8 @@ class OpenCollectionsManagerElement extends HTMLElement {
     this.state.selectedItemId = null;
     this.state.activeSourceFilter = 'all';
     this.state.currentLevel = 'collections';
-    this.state.metadataMode = 'collection';
+    this.state.openedCollectionId = null;
+    this.syncMetadataModeFromState();
     this.closeMobileEditor();
 
     this.setStatus(`Restored ${restored.length} remembered storage source definitions.`, 'neutral');
@@ -1445,30 +1356,40 @@ class OpenCollectionsManagerElement extends HTMLElement {
     this.state.assets = [...withoutSource, ...nextItems];
   }
 
-  requiredFieldScore(item) {
-    const checks = [
-      Boolean(item.id),
-      Boolean(item.title),
-      Boolean(item.media && item.media.url),
-      Boolean(item.license),
-    ];
-    return `${checks.filter(Boolean).length}/${checks.length}`;
-  }
-
-  createPreviewNode(item) {
-    return item;
-  }
-
   openViewer(itemId) {
-    return RenderViewer.openViewer(this, itemId);
+    const item = this.state.assets.find((entry) => entry.workspaceId === itemId);
+    if (!item) {
+      return;
+    }
+
+    this.state.viewerItemId = itemId;
+    if (this.state.selectedItemId !== itemId) {
+      this.state.selectedItemId = itemId;
+      this.syncMetadataModeFromState();
+      this.renderAssets();
+      this.renderEditor();
+      if (this.isMobileViewport()) {
+        this.openMobileEditor();
+      }
+    }
+
+    this.renderViewer();
+    this.dom.assetViewer?.open();
   }
 
   closeViewer() {
-    return RenderViewer.closeViewer(this);
+    this.state.viewerItemId = null;
+    this.dom.assetViewer?.clear();
+    this.dom.assetViewer?.close();
   }
 
   renderViewer() {
-    return RenderViewer.renderViewer(this);
+    const item = this.state.assets.find((entry) => entry.workspaceId === this.state.viewerItemId);
+    if (!item) {
+      this.closeViewer();
+      return;
+    }
+    this.dom.assetViewer?.setItem(item, (entry) => this.formatSourceBadge(entry));
   }
 
   renderSourceContext() {
@@ -1480,7 +1401,47 @@ class OpenCollectionsManagerElement extends HTMLElement {
   }
 
   renderSourcePicker() {
-    return renderSourcePickerUI(this);
+    const wrap = this.dom.sourcePickerList;
+    wrap.innerHTML = '';
+    if (this.state.sources.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.textContent = 'No hosts connected yet. Use Host manager to add one.';
+      wrap.appendChild(empty);
+      return;
+    }
+
+    for (const source of this.state.sources) {
+      const card = document.createElement('article');
+      card.className = 'source-card';
+      const label = source.displayLabel || source.label || source.providerLabel || 'Host';
+      const type = document.createElement('p');
+      type.className = 'source-card-label';
+      type.textContent = label;
+      const meta = document.createElement('p');
+      meta.className = 'panel-subtext';
+      meta.textContent = `${source.collections?.length || 0} collections`;
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-primary';
+      btn.type = 'button';
+      btn.textContent = 'Use host';
+      btn.addEventListener('click', () => {
+        this.state.activeSourceFilter = source.id;
+        this.state.currentLevel = 'collections';
+        this.state.openedCollectionId = null;
+        this.state.selectedCollectionId = source.selectedCollectionId || 'all';
+        this.state.selectedItemId = null;
+        this.syncMetadataModeFromState();
+        this.closeMobileEditor();
+        this.renderSourceFilter();
+        this.renderSourceContext();
+        this.renderAssets();
+        this.renderEditor();
+        this.closeDialog(this.dom.sourcePickerDialog);
+      });
+      card.append(type, meta, btn);
+      wrap.appendChild(card);
+    }
   }
 
   findSelectedCollectionMeta() {
@@ -1554,7 +1515,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
     }
 
     this.state.selectedItemId = itemId;
-    this.state.metadataMode = 'item';
+    this.syncMetadataModeFromState();
     this.renderAssets();
     this.renderEditor();
     if (this.isMobileViewport()) {
@@ -1569,13 +1530,43 @@ class OpenCollectionsManagerElement extends HTMLElement {
     return this.state.assets.find((item) => item.workspaceId === this.state.selectedItemId) || null;
   }
 
+  resolveMetadataMode() {
+    if (this.state.currentLevel === 'collections') {
+      this.state.selectedItemId = null;
+      const selectedCollection = this.findSelectedCollectionMeta();
+      return selectedCollection ? 'collection' : 'none';
+    }
+
+    if (this.state.currentLevel === 'items') {
+      if (!this.state.openedCollectionId) {
+        this.state.selectedItemId = null;
+        return 'none';
+      }
+      const visibleItems = this.getVisibleAssets().filter((item) => item.collectionId === this.state.openedCollectionId);
+      const hasSelectedItem = visibleItems.some((item) => item.workspaceId === this.state.selectedItemId);
+      if (!hasSelectedItem) {
+        this.state.selectedItemId = null;
+      }
+      return hasSelectedItem ? 'item' : 'none';
+    }
+
+    this.state.selectedItemId = null;
+    return 'none';
+  }
+
+  syncMetadataModeFromState() {
+    const mode = this.resolveMetadataMode();
+    this.state.metadataMode = mode;
+    return mode;
+  }
+
   renderMetadataMode(mode) {
     this.state.metadataMode = mode;
     this.renderEditor();
   }
 
   renderEditor() {
-    const metadataMode = this.state.metadataMode || 'none';
+    const metadataMode = this.syncMetadataModeFromState();
     if (metadataMode === 'collection') {
       this.dom.metadataEditor.setView({
         mode: 'collection',
@@ -1600,13 +1591,6 @@ class OpenCollectionsManagerElement extends HTMLElement {
 
     this.dom.metadataEditor.setView({ mode: 'none' });
     this.syncEditorVisibility();
-  }
-
-  tagsToArray(rawValue) {
-    return rawValue
-      .split(',')
-      .map((entry) => entry.trim())
-      .filter(Boolean);
   }
 
   collectEditorPatch() {
@@ -1779,15 +1763,12 @@ class OpenCollectionsManagerElement extends HTMLElement {
       this.state.activeSourceFilter = source.id;
       this.state.selectedCollectionId = source.selectedCollectionId || 'all';
       this.state.currentLevel = 'collections';
-      this.state.metadataMode = 'collection';
       this.state.openedCollectionId = null;
+      this.state.selectedItemId = null;
+      this.syncMetadataModeFromState();
       this.closeMobileEditor();
       this.state.manifest = null;
       this.dom.manifestPreview.textContent = '{}';
-
-      if (!this.state.selectedItemId) {
-        this.state.selectedItemId = normalizedWithCollections[0]?.workspaceId || null;
-      }
 
       this.setStatus(`Added storage source ${source.label} (${loaded.length} items).`, 'ok');
       this.renderSourcesList();
@@ -1808,23 +1789,23 @@ class OpenCollectionsManagerElement extends HTMLElement {
     }
 
     this.setSelectedProvider(source.providerId);
+    const nextConfigValues = {};
     if (source.providerId === 'github') {
-      this.dom.githubToken.value = source.config.token || '';
-      this.dom.githubOwner.value = source.config.owner || '';
-      this.dom.githubRepo.value = source.config.repo || '';
-      this.dom.githubBranch.value = source.config.branch || 'main';
-      this.dom.githubPath.value = source.config.path || '';
+      nextConfigValues.githubToken = source.config.token || '';
+      nextConfigValues.githubOwner = source.config.owner || '';
+      nextConfigValues.githubRepo = source.config.repo || '';
+      nextConfigValues.githubBranch = source.config.branch || 'main';
+      nextConfigValues.githubPath = source.config.path || '';
     }
     if (source.providerId === 'public-url') {
-      this.dom.publicUrlInput.value = source.config.manifestUrl || '';
+      nextConfigValues.publicUrlInput = source.config.manifestUrl || '';
     }
     if (source.providerId === 'gdrive') {
-      this.dom.gdriveSourceMode.value = source.config.sourceMode || 'public-manifest-url';
-      this.dom.gdriveUrlInput.value = source.config.manifestUrl || '';
-      this.dom.gdriveFileIdInput.value = source.config.fileId || '';
-      this.dom.gdriveClientIdInput.value = source.config.oauthClientId || COLLECTOR_CONFIG.googleDriveOAuth?.clientId || '';
-      this.dom.gdriveAccessTokenInput.value = '';
-      this.renderGoogleDriveMode();
+      nextConfigValues.gdriveSourceMode = source.config.sourceMode || 'public-manifest-url';
+      nextConfigValues.gdriveUrlInput = source.config.manifestUrl || '';
+      nextConfigValues.gdriveFileIdInput = source.config.fileId || '';
+      nextConfigValues.gdriveClientIdInput = source.config.oauthClientId || COLLECTOR_CONFIG.googleDriveOAuth?.clientId || '';
+      nextConfigValues.gdriveAccessTokenInput = '';
       this.setGoogleDriveAuthStatus(
         source.config.sourceMode === 'auth-manifest-file'
           ? 'Re-authentication required before refresh.'
@@ -1833,8 +1814,9 @@ class OpenCollectionsManagerElement extends HTMLElement {
       );
     }
     if (source.providerId === 'local') {
-      this.dom.localPathInput.value = source.config.path || COLLECTOR_CONFIG.defaultLocalManifestPath;
+      nextConfigValues.localPathInput = source.config.path || COLLECTOR_CONFIG.defaultLocalManifestPath;
     }
+    this.dom.sourceManager?.setConfigValues(nextConfigValues);
 
     this.setConnectionStatus(`Inspecting storage source: ${source.label}`, true);
   }
@@ -1966,18 +1948,17 @@ class OpenCollectionsManagerElement extends HTMLElement {
 
     this.state.sources = this.state.sources.filter((entry) => entry.id !== sourceId);
     this.state.assets = this.state.assets.filter((entry) => entry.sourceId !== sourceId);
-    this.state.metadataMode = this.state.currentLevel === 'collections' ? 'collection' : 'item';
     if (this.state.sources.length === 0) {
-      this.state.metadataMode = 'none';
       this.closeMobileEditor();
     }
 
     if (this.state.selectedItemId && !this.state.assets.some((item) => item.workspaceId === this.state.selectedItemId)) {
-      this.state.selectedItemId = this.getVisibleAssets()[0]?.workspaceId || this.state.assets[0]?.workspaceId || null;
+      this.state.selectedItemId = null;
     }
     if (this.state.viewerItemId && !this.state.assets.some((item) => item.workspaceId === this.state.viewerItemId)) {
       this.closeViewer();
     }
+    this.syncMetadataModeFromState();
 
     if (this.state.sources.length === 0) {
       this.setConnectionStatus('No hosts connected.', 'neutral');
@@ -2158,8 +2139,9 @@ class OpenCollectionsManagerElement extends HTMLElement {
       this.renderSourceFilter();
       this.renderCollectionFilter();
       this.state.currentLevel = 'collections';
-      this.state.metadataMode = 'collection';
       this.state.openedCollectionId = null;
+      this.state.selectedItemId = null;
+      this.syncMetadataModeFromState();
       this.closeMobileEditor();
       this.renderSourceContext();
       this.renderAssets();
