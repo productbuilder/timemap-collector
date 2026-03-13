@@ -13,6 +13,8 @@ class OpenCollectionsSourceManagerElement extends HTMLElement {
       connectionStatusTone: 'neutral',
       gdriveAuthStatusText: 'Disconnected.',
       gdriveAuthStatusTone: 'neutral',
+      localFolderStatusText: 'No folder selected.',
+      localFolderStatusTone: 'neutral',
       configValues: {
         githubToken: '',
         githubOwner: '',
@@ -26,6 +28,7 @@ class OpenCollectionsSourceManagerElement extends HTMLElement {
         gdriveFileIdInput: '',
         gdriveAccessTokenInput: '',
         localPathInput: '',
+        localFolderName: '',
       },
     };
   }
@@ -79,6 +82,10 @@ class OpenCollectionsSourceManagerElement extends HTMLElement {
       this.dispatch('connect-provider');
     });
 
+    this.shadowRoot.getElementById('pickLocalFolderBtn')?.addEventListener('click', () => {
+      this.dispatch('pick-local-folder');
+    });
+
     this.shadowRoot.getElementById('gdriveSourceMode')?.addEventListener('change', () => {
       this.renderGoogleDriveMode();
       this.dispatch('gdrive-mode-change', { mode: this.getGoogleDriveSourceMode() });
@@ -109,6 +116,7 @@ class OpenCollectionsSourceManagerElement extends HTMLElement {
     this.setCapabilities(this.model.capabilities);
     this.setConnectionStatus(this.model.connectionStatusText, this.model.connectionStatusTone);
     this.setGoogleDriveAuthStatus(this.model.gdriveAuthStatusText, this.model.gdriveAuthStatusTone);
+    this.setLocalFolderStatus(this.model.localFolderStatusText, this.model.localFolderStatusTone);
   }
 
   setProviderCatalog(catalog = []) {
@@ -153,10 +161,6 @@ class OpenCollectionsSourceManagerElement extends HTMLElement {
 
   setCapabilities(capabilities) {
     this.model.capabilities = capabilities || {};
-    const node = this.shadowRoot?.getElementById('capabilities');
-    if (node) {
-      node.textContent = JSON.stringify(this.model.capabilities, null, 2);
-    }
   }
 
   setGoogleDriveAuthStatus(text, tone = 'neutral') {
@@ -175,6 +179,22 @@ class OpenCollectionsSourceManagerElement extends HTMLElement {
     node.style.color = colors[this.model.gdriveAuthStatusTone] || colors.neutral;
   }
 
+  setLocalFolderStatus(text, tone = 'neutral') {
+    this.model.localFolderStatusText = text || 'No folder selected.';
+    this.model.localFolderStatusTone = tone || 'neutral';
+    const colors = {
+      neutral: '#64748b',
+      ok: '#166534',
+      warn: '#9a3412',
+    };
+    const node = this.shadowRoot?.getElementById('localFolderStatus');
+    if (!node) {
+      return;
+    }
+    node.textContent = this.model.localFolderStatusText;
+    node.style.color = colors[this.model.localFolderStatusTone] || colors.neutral;
+  }
+
   setConfigValues(nextValues = {}) {
     this.model.configValues = {
       ...this.model.configValues,
@@ -183,6 +203,10 @@ class OpenCollectionsSourceManagerElement extends HTMLElement {
     this.applyConfigValues();
     if (Object.prototype.hasOwnProperty.call(nextValues || {}, 'gdriveSourceMode')) {
       this.renderGoogleDriveMode();
+    }
+    if (Object.prototype.hasOwnProperty.call(nextValues || {}, 'localFolderName')) {
+      const folderName = String(nextValues.localFolderName || '').trim();
+      this.setLocalFolderStatus(folderName ? `Selected folder: ${folderName}` : 'No folder selected.', folderName ? 'ok' : 'neutral');
     }
   }
 
@@ -204,6 +228,7 @@ class OpenCollectionsSourceManagerElement extends HTMLElement {
       gdriveFileIdInput: 'gdriveFileIdInput',
       gdriveAccessTokenInput: 'gdriveAccessTokenInput',
       localPathInput: 'localPathInput',
+      localFolderName: 'localFolderName',
     };
     for (const [key, id] of Object.entries(mapping)) {
       const input = this.shadowRoot.getElementById(id);
@@ -231,6 +256,7 @@ class OpenCollectionsSourceManagerElement extends HTMLElement {
 
     if (providerId === 'local') {
       config.path = root.getElementById('localPathInput')?.value.trim() || '';
+      config.localDirectoryName = root.getElementById('localFolderName')?.value.trim() || '';
     }
 
     if (providerId === 'public-url') {
@@ -441,18 +467,23 @@ class OpenCollectionsSourceManagerElement extends HTMLElement {
     this.shadowRoot.innerHTML = `
       <style>${sourceManagerStyles}</style>
       <div class="source-manager">
-        <div>
-          <p class="config-section-title">Connected hosts</p>
-          <div id="sourceList" class="source-list"></div>
-          <button class="btn storage-help-btn" id="openStorageOptionsBtn" type="button">Storage options</button>
-        </div>
-        <div class="provider-layout">
+        <div class="provider-layout single-column">
           <div>
-            <p class="config-section-title">Add storage host</p>
+            <p class="config-section-title">Choose host provider</p>
             <div id="providerCatalog" class="provider-list"></div>
           </div>
           <div id="providerConfig" class="provider-config">
             <p id="providerConfigTitle" class="config-section-title">Host configuration</p>
+
+            <div id="localConfig" class="is-hidden">
+              <p class="panel-subtext">Pick a folder from your computer to use as a local host.</p>
+              <div class="dialog-actions">
+                <button class="btn" id="pickLocalFolderBtn" type="button">Select folder</button>
+              </div>
+              <p id="localFolderStatus" class="panel-subtext">No folder selected.</p>
+              <div class="field-row is-hidden"><label for="localPathInput">Collection path</label><input id="localPathInput" type="text" /></div>
+              <input id="localFolderName" type="hidden" value="" />
+            </div>
 
             <div id="githubConfig" class="is-hidden">
               <div class="field-row"><label for="githubToken">GitHub token (PAT)</label><input id="githubToken" type="password" /></div>
@@ -494,10 +525,6 @@ class OpenCollectionsSourceManagerElement extends HTMLElement {
               </div>
             </div>
 
-            <div id="localConfig" class="is-hidden">
-              <div class="field-row"><label for="localPathInput">Collection path</label><input id="localPathInput" type="text" /></div>
-            </div>
-
             <div id="placeholderConfig" class="is-hidden">
               <div class="empty">This provider is planned and not yet available in this MVP.</div>
             </div>
@@ -507,8 +534,14 @@ class OpenCollectionsSourceManagerElement extends HTMLElement {
             </div>
           </div>
         </div>
+
+        <div>
+          <p class="config-section-title">Connected hosts</p>
+          <div id="sourceList" class="source-list"></div>
+          <button class="btn storage-help-btn" id="openStorageOptionsBtn" type="button">Storage options</button>
+        </div>
+
         <p id="connectionStatus" class="panel-subtext">Not connected.</p>
-        <pre id="capabilities">{}</pre>
       </div>
     `;
   }

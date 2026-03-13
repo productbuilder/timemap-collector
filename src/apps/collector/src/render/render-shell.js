@@ -13,14 +13,31 @@ export function renderShell(shadowRoot) {
       </div>
     </div>
 
-    <dialog id="providerDialog" aria-label="Host manager">
+    <dialog id="providerDialog" aria-label="Add host">
       <div class="dialog-shell">
         <div class="dialog-header">
-          <h2 class="dialog-title">Host manager</h2>
+          <h2 class="dialog-title">Add host</h2>
           <button class="btn" data-close="providerDialog" type="button">Close</button>
         </div>
         <div class="dialog-body">
           <open-collections-source-manager id="sourceManager"></open-collections-source-manager>
+        </div>
+      </div>
+    </dialog>
+
+
+
+    <dialog id="hostMenuDialog" aria-label="Host options">
+      <div class="dialog-shell">
+        <div class="dialog-header">
+          <h2 class="dialog-title">Host</h2>
+          <button class="btn" data-close="hostMenuDialog" type="button">Close</button>
+        </div>
+        <div class="dialog-body">
+          <div class="dialog-actions">
+            <button class="btn" id="openSourcePickerFromHostBtn" type="button">Switch host</button>
+            <button class="btn" id="openAddHostFromHostBtn" type="button">Add host</button>
+          </div>
         </div>
       </div>
     </dialog>
@@ -106,7 +123,6 @@ export function renderShell(shadowRoot) {
         </div>
         <div class="dialog-body">
           <div class="dialog-actions">
-            <button class="btn" id="openSourcePickerFromMenuBtn" type="button">Switch host</button>
             <button class="btn" id="openRegisterFromMenuBtn" type="button">Register collection</button>
           </div>
         </div>

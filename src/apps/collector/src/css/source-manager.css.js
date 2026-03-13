@@ -71,6 +71,10 @@ export const sourceManagerStyles = `
     gap: 0.7rem;
   }
 
+  .provider-layout.single-column {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .provider-list {
     display: grid;
     gap: 0.5rem;

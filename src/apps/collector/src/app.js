@@ -59,8 +59,13 @@ class OpenCollectionsManagerElement extends HTMLElement {
 
     this.providerCatalog = [
       {
+        ...this.providerFactories.local.getDescriptor(),
+        label: 'Local folder',
+        description: 'Use a folder on this device as a local host (browser support required).',
+      },
+      {
         ...this.providerFactories.github.getDescriptor(),
-        label: 'GitHub repository',
+        label: 'GitHub storage',
         description: 'Writable storage source for managed collections (recommended).',
       },
       {
@@ -76,31 +81,6 @@ class OpenCollectionsManagerElement extends HTMLElement {
         statusLabel: 'Coming soon',
         description: 'Writable object storage source for institutional collection management.',
       },
-      {
-        id: 'wordpress',
-        label: 'WordPress / CMS',
-        category: 'external',
-        enabled: false,
-        statusLabel: 'Planned',
-        description: 'Manage collections linked to CMS-managed media libraries.',
-      },
-      {
-        id: 'wikimedia',
-        label: 'Wikimedia Commons',
-        category: 'external',
-        enabled: false,
-        statusLabel: 'Planned',
-        description: 'Import media and metadata from Wikimedia Commons.',
-      },
-      {
-        id: 'internet-archive',
-        label: 'Internet Archive',
-        category: 'external',
-        enabled: false,
-        statusLabel: 'Planned',
-        description: 'Browse and load assets from Archive.org items.',
-      },
-      this.providerFactories.local.getDescriptor(),
     ];
 
     this.shadow = this.attachShadow({ mode: 'open' });
@@ -114,7 +94,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
     this.setConnectionStatus('No hosts connected.', 'neutral');
     this.renderCapabilities(this.providerFactories.local.getCapabilities());
     this.renderProviderCatalog();
-    this.setSelectedProvider('github');
+    this.setSelectedProvider('local');
     this.renderSourcesList();
     this.renderSourceFilter();
     this.renderAssets();
@@ -149,14 +129,16 @@ class OpenCollectionsManagerElement extends HTMLElement {
       sourceManager: root.getElementById('sourceManager'),
       assetViewer: root.getElementById('assetViewer'),
       providerDialog: root.getElementById('providerDialog'),
+      hostMenuDialog: root.getElementById('hostMenuDialog'),
       sourcePickerDialog: root.getElementById('sourcePickerDialog'),
       sourcePickerList: root.getElementById('sourcePickerList'),
       publishDialog: root.getElementById('publishDialog'),
       newCollectionDialog: root.getElementById('newCollectionDialog'),
       registerDialog: root.getElementById('registerDialog'),
       headerMenuDialog: root.getElementById('headerMenuDialog'),
+      openSourcePickerFromHostBtn: root.getElementById('openSourcePickerFromHostBtn'),
+      openAddHostFromHostBtn: root.getElementById('openAddHostFromHostBtn'),
       openRegisterFromMenuBtn: root.getElementById('openRegisterFromMenuBtn'),
-      openSourcePickerFromMenuBtn: root.getElementById('openSourcePickerFromMenuBtn'),
       storageOptionsDialog: root.getElementById('storageOptionsDialog'),
       collectionId: root.getElementById('collectionId'),
       collectionTitle: root.getElementById('collectionTitle'),
@@ -184,6 +166,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
 
     this.dom.sourceManager?.setConfigValues({
       localPathInput: COLLECTOR_CONFIG.defaultLocalManifestPath,
+      localFolderName: '',
       gdriveClientIdInput: COLLECTOR_CONFIG.googleDriveOAuth?.clientId || '',
       githubBranch: 'main',
     });
@@ -204,7 +187,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
 
     this._eventsBound = true;
 
-    this.dom.managerHeader.addEventListener('open-host-manager', () => this.openDialog(this.dom.providerDialog));
+    this.dom.managerHeader.addEventListener('open-host-menu', () => this.openDialog(this.dom.hostMenuDialog));
     this.dom.managerHeader.addEventListener('open-header-menu', () => this.openDialog(this.dom.headerMenuDialog));
     this.dom.sourceManager.addEventListener('open-storage-options', () => this.openDialog(this.dom.storageOptionsDialog));
     this.dom.sourceManager.addEventListener('select-provider', (event) => {
@@ -252,10 +235,17 @@ class OpenCollectionsManagerElement extends HTMLElement {
     this.dom.sourceManager.addEventListener('gdrive-connect-auth', async () => {
       await this.connectGoogleDriveAuth();
     });
-    this.dom.openSourcePickerFromMenuBtn.addEventListener('click', () => {
-      this.closeDialog(this.dom.headerMenuDialog);
+    this.dom.sourceManager.addEventListener('pick-local-folder', async () => {
+      await this.pickLocalFolder();
+    });
+    this.dom.openSourcePickerFromHostBtn.addEventListener('click', () => {
+      this.closeDialog(this.dom.hostMenuDialog);
       this.renderSourcePicker();
       this.openDialog(this.dom.sourcePickerDialog);
+    });
+    this.dom.openAddHostFromHostBtn.addEventListener('click', () => {
+      this.closeDialog(this.dom.hostMenuDialog);
+      this.openDialog(this.dom.providerDialog);
     });
     this.dom.openRegisterFromMenuBtn.addEventListener('click', () => {
       this.closeDialog(this.dom.headerMenuDialog);
@@ -892,12 +882,43 @@ class OpenCollectionsManagerElement extends HTMLElement {
   collectCurrentProviderConfig(providerId) {
     const config = this.dom.sourceManager?.getProviderConfig(providerId) || {};
     if (providerId === 'local') {
-      config.path = (config.path || '').trim() || COLLECTOR_CONFIG.defaultLocalManifestPath;
+      config.localDirectoryName = (config.localDirectoryName || '').trim();
+      if (config.localDirectoryName) {
+        config.path = (config.path || '').trim() || `${config.localDirectoryName}/collections.json`;
+      } else {
+        config.path = (config.path || '').trim() || COLLECTOR_CONFIG.defaultLocalManifestPath;
+      }
     }
     if (providerId === 'gdrive') {
       config.oauthScopes = COLLECTOR_CONFIG.googleDriveOAuth?.scope || 'https://www.googleapis.com/auth/drive.readonly';
     }
     return config;
+  }
+
+  async pickLocalFolder() {
+    if (typeof window.showDirectoryPicker !== 'function') {
+      this.dom.sourceManager?.setLocalFolderStatus('This browser does not support folder picking yet.', 'warn');
+      this.setStatus('Folder picking is not supported in this browser.', 'warn');
+      return;
+    }
+
+    try {
+      const handle = await window.showDirectoryPicker();
+      const folderName = (handle?.name || '').trim() || 'Selected folder';
+      this.dom.sourceManager?.setConfigValues({
+        localFolderName: folderName,
+        localPathInput: `${folderName}/collections.json`,
+      });
+      this.dom.sourceManager?.setLocalFolderStatus(`Selected folder: ${folderName}`, 'ok');
+      this.setStatus(`Selected local folder: ${folderName}`, 'ok');
+    } catch (error) {
+      if (error?.name === 'AbortError') {
+        this.dom.sourceManager?.setLocalFolderStatus('Folder selection cancelled.', 'neutral');
+        return;
+      }
+      this.dom.sourceManager?.setLocalFolderStatus(`Folder selection failed: ${error.message}`, 'warn');
+      this.setStatus(`Folder selection failed: ${error.message}`, 'warn');
+    }
   }
 
   sourceDisplayLabelFor(providerId, config, fallbackLabel) {
@@ -943,7 +964,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
     }
 
     if (providerId === 'local') {
-      return this.hostNameFromPath(config.path, 'Local host');
+      return (config.localDirectoryName || '').trim() || this.hostNameFromPath(config.path, 'Local folder');
     }
 
     return fallbackLabel || 'Source';
@@ -974,7 +995,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
     }
 
     if (providerId === 'local') {
-      return (config.path || '').trim() || 'Local host';
+      return (config.localDirectoryName || '').trim() || (config.path || '').trim() || 'Local folder';
     }
 
     return fallbackLabel || 'Source';
@@ -1008,6 +1029,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
     if (providerId === 'local') {
       return {
         path: (config.path || '').trim() || COLLECTOR_CONFIG.defaultLocalManifestPath,
+        localDirectoryName: (config.localDirectoryName || '').trim(),
       };
     }
 
@@ -1219,7 +1241,8 @@ class OpenCollectionsManagerElement extends HTMLElement {
     for (const source of restored) {
       if (
         source.providerId !== 'github' &&
-        !(source.providerId === 'gdrive' && source.config?.sourceMode === 'auth-manifest-file')
+        !(source.providerId === 'gdrive' && source.config?.sourceMode === 'auth-manifest-file') &&
+        !(source.providerId === 'local' && source.config?.localDirectoryName)
       ) {
         // Non-secret sources can reconnect automatically.
         await this.refreshSource(source.id);
@@ -1406,7 +1429,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
     if (this.state.sources.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'empty';
-      empty.textContent = 'No hosts connected yet. Use Host manager to add one.';
+      empty.textContent = 'No hosts connected yet. Use Add host to connect one.';
       wrap.appendChild(empty);
       return;
     }
@@ -1683,8 +1706,54 @@ class OpenCollectionsManagerElement extends HTMLElement {
       return;
     }
 
-    const provider = providerFactory();
     const config = this.collectCurrentProviderConfig(providerId);
+
+    if (providerId === 'local' && !config.localDirectoryName) {
+      this.setConnectionStatus('Select a local folder first.', false);
+      this.setStatus('Select a local folder before adding this host.', 'warn');
+      return;
+    }
+
+    if (providerId === 'local' && config.localDirectoryName) {
+      const displayLabel = this.sourceDisplayLabelFor(providerId, config, selectedProvider?.label || providerId);
+      const detailLabel = this.sourceDetailLabelFor(providerId, config, selectedProvider?.label || providerId);
+      const source = {
+        id: makeSourceId(providerId),
+        providerId,
+        providerLabel: selectedProvider?.label || providerId,
+        label: detailLabel,
+        displayLabel,
+        detailLabel,
+        config,
+        capabilities: this.providerFactories.local.getCapabilities(),
+        status: 'Local folder selected. Browser folder access is currently metadata-only in this view.',
+        authMode: 'local-folder',
+        itemCount: 0,
+        provider: null,
+        needsReconnect: false,
+        needsCredentials: false,
+        collections: [],
+        selectedCollectionId: null,
+      };
+      this.state.sources = [...this.state.sources, source];
+      this.state.activeSourceFilter = source.id;
+      this.state.selectedCollectionId = 'all';
+      this.state.currentLevel = 'collections';
+      this.state.openedCollectionId = null;
+      this.state.selectedItemId = null;
+      this.syncMetadataModeFromState();
+      this.closeMobileEditor();
+      this.setConnectionStatus('Local folder host added.', true);
+      this.setStatus(`Added local folder host ${displayLabel}.`, 'ok');
+      this.renderSourcesList();
+      this.renderSourceFilter();
+      this.renderAssets();
+      this.renderEditor();
+      this.saveSourcesToStorage();
+      return;
+    }
+
+    const provider = providerFactory();
 
     if (providerId === 'gdrive' && config.sourceMode === 'public-manifest-url' && config.manifestUrl) {
       const normalized = normalizeGoogleDriveManifestUrl(config.manifestUrl);
@@ -1815,6 +1884,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
     }
     if (source.providerId === 'local') {
       nextConfigValues.localPathInput = source.config.path || COLLECTOR_CONFIG.defaultLocalManifestPath;
+      nextConfigValues.localFolderName = source.config.localDirectoryName || '';
     }
     this.dom.sourceManager?.setConfigValues(nextConfigValues);
 

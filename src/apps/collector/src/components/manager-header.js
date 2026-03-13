@@ -20,7 +20,7 @@ class OpenCollectionsHeaderElement extends HTMLElement {
 
   bindEvents() {
     this.shadowRoot.getElementById('openHostManagerBtn')?.addEventListener('click', () => {
-      this.dispatchEvent(new CustomEvent('open-host-manager', { bubbles: true, composed: true }));
+      this.dispatchEvent(new CustomEvent('open-host-menu', { bubbles: true, composed: true }));
     });
     this.shadowRoot.getElementById('openHeaderMenuBtn')?.addEventListener('click', () => {
       this.dispatchEvent(new CustomEvent('open-header-menu', { bubbles: true, composed: true }));
