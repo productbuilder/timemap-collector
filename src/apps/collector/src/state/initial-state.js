@@ -18,5 +18,10 @@
     lastLocalSaveAt: '',
     isDropTargetActive: false,
     localDraftCollections: [],
+    browserViewModes: {
+      collections: 'cards',
+      items: 'cards',
+    },
+    inspectorMode: 'side',
   };
 }

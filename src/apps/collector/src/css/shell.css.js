@@ -35,6 +35,10 @@ export const shellStyles = `
     overflow: hidden;
   }
 
+  .content-grid.is-inspector-hidden {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .btn {
     border: 1px solid #cbd5e1;
     background: #ffffff;

@@ -124,6 +124,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
     const root = this.shadow;
     this.dom = {
       managerHeader: root.getElementById('managerHeader'),
+      contentGrid: root.querySelector('.content-grid'),
       collectionBrowser: root.getElementById('collectionBrowser'),
       metadataEditor: root.getElementById('metadataEditor'),
       sourceManager: root.getElementById('sourceManager'),
@@ -313,6 +314,9 @@ class OpenCollectionsManagerElement extends HTMLElement {
     this.dom.collectionBrowser.addEventListener('item-view', (event) => {
       this.openViewer(event.detail?.workspaceId || '');
     });
+    this.dom.collectionBrowser.addEventListener('view-mode-change', (event) => {
+      this.setBrowserViewMode(event.detail?.level || 'collections', event.detail?.mode || 'cards');
+    });
     this.dom.collectionBrowser.addEventListener('add-collection', () => {
       this.openNewCollectionDialog();
     });
@@ -431,8 +435,17 @@ class OpenCollectionsManagerElement extends HTMLElement {
     if (!this.dom?.metadataEditor) {
       return;
     }
+
+    const showInspectorSidePanel = this.state.inspectorMode !== 'hidden';
+    this.dom.contentGrid?.classList.toggle('is-inspector-hidden', !showInspectorSidePanel);
+
     const shouldShowOverlay = this.isMobileViewport() && this.state.mobileEditorOpen;
     this.dom.metadataEditor.setMobileOpen(shouldShowOverlay);
+  }
+
+  applyInspectorModeForViewMode(mode) {
+    this.state.inspectorMode = mode === 'rows' ? 'hidden' : 'side';
+    this.syncEditorVisibility();
   }
 
   renderProviderCatalog() {
@@ -1495,6 +1508,10 @@ class OpenCollectionsManagerElement extends HTMLElement {
   renderAssets() {
     this.renderSourceContext();
 
+    const activeLevel = this.state.currentLevel === 'items' ? 'items' : 'collections';
+    const activeViewMode = this.state.browserViewModes?.[activeLevel] || 'cards';
+    this.applyInspectorModeForViewMode(activeViewMode);
+
     if (this.state.currentLevel === 'collections') {
       let collections = [];
       if (this.state.activeSourceFilter !== 'all') {
@@ -1512,6 +1529,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
         items: [],
         selectedCollectionId: this.state.selectedCollectionId,
         selectedItemId: null,
+        viewModes: this.state.browserViewModes,
       });
       return;
     }
@@ -1526,6 +1544,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
       items: visibleAssets,
       selectedCollectionId: this.state.selectedCollectionId,
       selectedItemId: this.state.selectedItemId,
+      viewModes: this.state.browserViewModes,
     });
   }
 
@@ -1586,6 +1605,19 @@ class OpenCollectionsManagerElement extends HTMLElement {
   renderMetadataMode(mode) {
     this.state.metadataMode = mode;
     this.renderEditor();
+  }
+
+  setBrowserViewMode(level, mode) {
+    const normalizedLevel = level === 'items' ? 'items' : 'collections';
+    const normalizedMode = mode === 'rows' ? 'rows' : 'cards';
+    this.state.browserViewModes = {
+      ...this.state.browserViewModes,
+      [normalizedLevel]: normalizedMode,
+    };
+    const activeLevel = this.state.currentLevel === 'items' ? 'items' : 'collections';
+    if (normalizedLevel === activeLevel) {
+      this.applyInspectorModeForViewMode(normalizedMode);
+    }
   }
 
   renderEditor() {
