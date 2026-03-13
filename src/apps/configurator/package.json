@@ -1,0 +1,10 @@
+{
+  "name": "@timemap/configurator-app",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Configurator package manager app (local file open/edit/save workflow).",
+  "scripts": {
+    "start": "echo \"Serve repo root and open /src/apps/configurator/\""
+  }
+}
