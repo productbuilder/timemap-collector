@@ -33,6 +33,21 @@ A host provides access to JSON files such as:
 
 A host is not a dataset itself. It is the place where datasets and manifests are stored.
 
+For local-folder hosts, use one host root with a small index plus one folder per collection:
+
+```text
+host-root/
+├─ collections.json
+├─ maps/
+│  ├─ collection.json
+│  ├─ map1.jpg
+│  └─ map2.jpg
+└─ photos/
+   ├─ collection.json
+   ├─ photo1.jpg
+   └─ photo2.jpg
+```
+
 Example hosts:
 
 `https://github.com/productbuilder/opencollections-data`
@@ -74,11 +89,11 @@ Example structure:
   "collections": [
     {
       "id": "maps",
-      "manifest": "/maps/collection.json"
+      "manifest": "maps/collection.json"
     },
     {
       "id": "photos",
-      "manifest": "/photos/collection.json"
+      "manifest": "photos/collection.json"
     }
   ]
 }
@@ -101,6 +116,7 @@ It contains:
 - collection metadata
 - item list
 - item metadata
+- file paths that are relative to the collection folder (for example `"url": "map1.jpg"`)
 
 Example structure:
 

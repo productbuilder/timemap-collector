@@ -12,6 +12,8 @@ export function toManifestItem(manager, item) {
     collectionLabel,
     previewUrl,
     thumbnailPreviewUrl,
+    fileName,
+    thumbnailFileName,
     thumbnailRepoPath,
     isLocalDraftAsset,
     draftUploadStatus,

@@ -123,6 +123,11 @@ export async function restoreLocalDraft(manager, options = {}) {
 
     manager.applyLocalDraftPayload(payload);
     await manager.rehydrateLocalDraftAssetUrls();
+    for (const source of manager.state.sources) {
+      if (source?.providerId === 'local' && source.provider) {
+        await manager.hydrateLocalSourceAssetPreviews(source.id);
+      }
+    }
     manager.renderAssets();
     manager.renderEditor();
     manager.state.lastLocalSaveAt = payload.savedAt || '';

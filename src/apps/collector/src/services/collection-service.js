@@ -67,6 +67,89 @@ export async function createNewCollectionDraft(manager) {
     rootPath: manager.normalizeCollectionRootPath(`${slug}/`, slug),
   };
 
+  const activeSource =
+    manager.state.activeSourceFilter !== 'all'
+      ? manager.getSourceById(manager.state.activeSourceFilter)
+      : null;
+
+  if (activeSource?.providerId === 'local' && (!activeSource.provider || !activeSource.capabilities?.canSaveMetadata)) {
+    manager.setStatus('Reconnect the selected local host with write access before creating a collection.', 'warn');
+    return;
+  }
+
+  if (
+    activeSource?.providerId === 'local' &&
+    activeSource.provider &&
+    typeof activeSource.provider.createCollection === 'function' &&
+    activeSource.capabilities?.canSaveMetadata
+  ) {
+    try {
+      const created = await activeSource.provider.createCollection(meta);
+      const createdCollection = created?.collection || null;
+      const nextCollectionId = createdCollection?.id || meta.id;
+      const nextMeta = {
+        ...meta,
+        id: nextCollectionId,
+        title: createdCollection?.title || meta.title,
+        description: createdCollection?.description || meta.description,
+        license: createdCollection?.license || meta.license,
+        publisher: createdCollection?.publisher || meta.publisher,
+        language: createdCollection?.language || meta.language,
+        rootPath: manager.normalizeCollectionRootPath(createdCollection?.rootPath || meta.rootPath, nextCollectionId),
+      };
+
+      manager.setCollectionMetaFields(nextMeta);
+      manager.state.manifest = buildInitialCollectionManifest(manager, nextMeta);
+      manager.dom.manifestPreview.textContent = JSON.stringify(manager.state.manifest, null, 2);
+      manager.state.selectedItemId = null;
+
+      const nextCollectionEntry = {
+        id: nextCollectionId,
+        title: nextMeta.title,
+        description: nextMeta.description,
+        license: nextMeta.license,
+        publisher: nextMeta.publisher,
+        language: nextMeta.language,
+        rootPath: nextMeta.rootPath,
+      };
+      const exists = (activeSource.collections || []).some((entry) => entry.id === nextCollectionId);
+      activeSource.collections = exists
+        ? (activeSource.collections || []).map((entry) => (entry.id === nextCollectionId ? { ...entry, ...nextCollectionEntry } : entry))
+        : [...(activeSource.collections || []), nextCollectionEntry];
+      activeSource.selectedCollectionId = nextCollectionId;
+
+      if (!manager.state.localDraftCollections.some((entry) => entry.id === nextCollectionId)) {
+        manager.state.localDraftCollections = [
+          ...manager.state.localDraftCollections,
+          { id: nextCollectionId, title: nextMeta.title, rootPath: nextMeta.rootPath },
+        ];
+      }
+
+      manager.state.selectedCollectionId = nextCollectionId;
+      manager.state.currentLevel = 'collections';
+      manager.state.openedCollectionId = null;
+      manager.syncMetadataModeFromState();
+      manager.closeDialog(manager.dom.newCollectionDialog);
+      manager.renderSourcesList();
+      manager.renderSourceFilter();
+      manager.renderCollectionFilter();
+      manager.renderAssets();
+      manager.renderEditor();
+      if (manager.isMobileViewport()) {
+        manager.openMobileEditor();
+      }
+
+      if (manager.state.opfsAvailable) {
+        await manager.saveLocalDraft();
+      }
+      manager.setStatus(`Created collection ${nextCollectionId} in local host ${activeSource.displayLabel || activeSource.label}.`, 'ok');
+      return;
+    } catch (error) {
+      manager.setStatus(`Local collection creation failed: ${error.message}`, 'warn');
+      return;
+    }
+  }
+
   manager.setCollectionMetaFields(meta);
   manager.state.manifest = buildInitialCollectionManifest(manager, meta);
   manager.dom.manifestPreview.textContent = JSON.stringify(manager.state.manifest, null, 2);
@@ -136,6 +219,73 @@ export async function saveSelectedCollectionMetadata(manager, patch = null) {
     return;
   }
   const nextPatch = patch || manager.dom.metadataEditor.getCollectionPatch();
+  const activeSource =
+    manager.state.activeSourceFilter !== 'all'
+      ? manager.getSourceById(manager.state.activeSourceFilter)
+      : null;
+
+  if (activeSource?.providerId === 'local' && (!activeSource.provider || !activeSource.capabilities?.canSaveMetadata)) {
+    manager.setStatus('Reconnect the selected local host with write access before saving collection metadata.', 'warn');
+    return;
+  }
+
+  if (
+    activeSource?.providerId === 'local' &&
+    activeSource.provider &&
+    typeof activeSource.provider.saveCollectionMetadata === 'function' &&
+    activeSource.capabilities?.canSaveMetadata
+  ) {
+    try {
+      const result = await activeSource.provider.saveCollectionMetadata(selected.id, nextPatch);
+      const updatedCollection = result?.collection || {};
+      const normalizedRootPath = manager.normalizeCollectionRootPath(
+        updatedCollection.rootPath || selected.rootPath || `${selected.id}/`,
+        selected.id,
+      );
+
+      activeSource.collections = (activeSource.collections || []).map((entry) =>
+        entry.id === selected.id
+          ? {
+              ...entry,
+              ...nextPatch,
+              ...updatedCollection,
+              rootPath: normalizedRootPath,
+            }
+          : entry,
+      );
+      manager.state.localDraftCollections = manager.state.localDraftCollections.map((entry) =>
+        entry.id === selected.id
+          ? {
+              ...entry,
+              ...nextPatch,
+              ...updatedCollection,
+              rootPath: normalizedRootPath,
+            }
+          : entry,
+      );
+      manager.state.assets = manager.state.assets.map((item) =>
+        item.sourceId === activeSource.id && item.collectionId === selected.id
+          ? {
+              ...item,
+              collectionLabel: updatedCollection.title || nextPatch.title || item.collectionLabel || selected.id,
+              collectionRootPath: normalizedRootPath,
+            }
+          : item,
+      );
+
+      manager.renderSourcesList();
+      manager.renderSourceFilter();
+      manager.renderCollectionFilter();
+      manager.renderAssets();
+      manager.renderEditor();
+      manager.setStatus(`Saved collection metadata for ${selected.id}.`, 'ok');
+      return;
+    } catch (error) {
+      manager.setStatus(`Saving collection metadata failed: ${error.message}`, 'warn');
+      return;
+    }
+  }
+
   if (manager.state.activeSourceFilter !== 'all') {
     const source = manager.getSourceById(manager.state.activeSourceFilter);
     if (source?.collections) {

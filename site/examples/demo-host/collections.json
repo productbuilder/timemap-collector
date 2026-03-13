@@ -2,13 +2,11 @@
   "collections": [
     {
       "id": "example-dataset",
-      "title": "Example Dataset",
-      "manifest": "./example-dataset/collection.json"
+      "manifest": "example-dataset/collection.json"
     },
     {
       "id": "city-photos",
-      "title": "City Photos",
-      "manifest": "./city-photos/collection.json"
+      "manifest": "city-photos/collection.json"
     }
   ]
 }

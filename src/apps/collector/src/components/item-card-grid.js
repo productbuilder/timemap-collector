@@ -27,7 +27,10 @@ class OpenItemCardGridElement extends HTMLElement {
 
   createPreviewMarkup(item) {
     const mediaType = (item.media?.type || '').toLowerCase();
-    const url = item.thumbnailPreviewUrl || item.previewUrl || item.media?.thumbnailUrl || item.media?.url;
+    const isLocal = item.providerId === 'local';
+    const url = isLocal
+      ? (item.thumbnailPreviewUrl || item.previewUrl)
+      : (item.thumbnailPreviewUrl || item.previewUrl || item.media?.thumbnailUrl || item.media?.url);
 
     if (!url) {
       return '<div class="thumb-placeholder">No preview</div>';

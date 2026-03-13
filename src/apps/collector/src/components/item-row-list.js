@@ -26,7 +26,10 @@ class OpenItemRowListElement extends HTMLElement {
   }
 
   previewMarkup(item) {
-    const url = item.thumbnailPreviewUrl || item.previewUrl || item.media?.thumbnailUrl || item.media?.url;
+    const isLocal = item.providerId === 'local';
+    const url = isLocal
+      ? (item.thumbnailPreviewUrl || item.previewUrl)
+      : (item.thumbnailPreviewUrl || item.previewUrl || item.media?.thumbnailUrl || item.media?.url);
     if (!url) {
       return '<span class="row-thumb-placeholder">No</span>';
     }

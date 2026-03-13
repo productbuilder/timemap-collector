@@ -144,13 +144,15 @@ class OpenCollectionsMetadataElement extends HTMLElement {
       itemForm.hidden = false;
       headerSaveBtn.hidden = false;
       headerSaveBtn.textContent = 'Save item';
+      const filePath = selected.fileName || selected.media?.url || selected.media?.thumbnailUrl || '';
       context.textContent = this.model.canSaveItem
-        ? `${selected.id} - ${selected.sourceDisplayLabel || selected.sourceLabel}`
-        : `${selected.id} - ${selected.sourceDisplayLabel || selected.sourceLabel} (local edits)`;
+        ? `${selected.id} - ${selected.sourceDisplayLabel || selected.sourceLabel}${filePath ? ` - ${filePath}` : ''}`
+        : `${selected.id} - ${selected.sourceDisplayLabel || selected.sourceLabel} (local edits)${filePath ? ` - ${filePath}` : ''}`;
 
       this.shadowRoot.getElementById('itemTitle').value = selected.title || '';
       this.shadowRoot.getElementById('itemDescription').value = selected.description || '';
       this.shadowRoot.getElementById('itemType').value = selected.media?.type || '';
+      this.shadowRoot.getElementById('itemFilePath').value = filePath;
       this.shadowRoot.getElementById('itemCreator').value = selected.creator || '';
       this.shadowRoot.getElementById('itemDate').value = selected.date || '';
       this.shadowRoot.getElementById('itemLocation').value = selected.location || '';
@@ -202,6 +204,7 @@ class OpenCollectionsMetadataElement extends HTMLElement {
               <div class="field-row"><label for="itemTitle">Title</label><input id="itemTitle" type="text" /></div>
               <div class="field-row"><label for="itemDescription">Description</label><textarea id="itemDescription"></textarea></div>
               <div class="field-row"><label for="itemType">Type / Format</label><input id="itemType" type="text" /></div>
+              <div class="field-row"><label for="itemFilePath">File</label><input id="itemFilePath" type="text" readonly /></div>
             </div>
             <div class="editor-section">
               <p class="editor-section-title">Authorship</p>

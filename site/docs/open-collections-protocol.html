@@ -106,8 +106,8 @@
       "id": "map-123",
       "title": "Harbor map, 1898",
       "type": "image",
-      "thumbnailUrl": "thumbs/123.jpg",
-      "detailUrl": "items/123.json",
+      "thumbnailUrl": "123.thumb.jpg",
+      "detailUrl": "123.json",
       "updatedAt": "2025-09-01T12:00:00Z"
     }
   ]
@@ -116,14 +116,14 @@
 				<pre><code>{
   "id": "map-123",
   "title": "Harbor map, 1898",
-  "canonicalUrl": "https://museum-example.org/collections/rotterdam/items/123.json",
+  "canonicalUrl": "https://museum-example.org/collections/rotterdam/123.json",
   "date": "1898",
   "license": "CC BY 4.0",
   "attribution": "Museum Example",
   "assets": [
     {
       "role": "full",
-      "url": "media/123.jpg",
+      "url": "123.jpg",
       "mimeType": "image/jpeg"
     }
   ],
@@ -134,12 +134,16 @@
     }
   }
 }</code></pre>
-				<p class="code-label">Example directory structure</p>
-				<pre><code>/.well-known/collections.json
+				<p class="code-label">Example host-root structure</p>
+				<pre><code>/collections.json
 /collections/rotterdam/collection.json
-/collections/rotterdam/items/123.json
-/collections/rotterdam/media/123.jpg
-/collections/rotterdam/thumbs/123.jpg</code></pre>
+/collections/rotterdam/123.json
+/collections/rotterdam/123.jpg
+/collections/rotterdam/123.thumb.jpg</code></pre>
+				<p>
+					Use <code>collections.json</code> as the host index, then keep each collection folder flat:
+					<code>collection.json</code> plus the files it references.
+				</p>
 			</section>
 
 			<section>
@@ -162,9 +166,9 @@
     "filtering": true,
     "incrementalSync": true
   },
-  "itemsPageUrl": "https://museum-example.org/collections/rotterdam/items?page=1",
+  "itemsPageUrl": "https://museum-example.org/collections/rotterdam/entries?page=1",
   "queries": {
-    "itemSearchUrlTemplate": "https://museum-example.org/collections/rotterdam/items{?page,pageSize,type,from,to,updatedAfter}"
+    "itemSearchUrlTemplate": "https://museum-example.org/collections/rotterdam/entries{?page,pageSize,type,from,to,updatedAfter}"
   }
 }</code></pre>
 				<p class="code-label">Example paginated response (optional capability)</p>
@@ -174,12 +178,12 @@
       "id": "map-123",
       "title": "Harbor map, 1898",
       "type": "image",
-      "thumbnailUrl": "thumbs/123.jpg",
-      "detailUrl": "items/123.json",
+      "thumbnailUrl": "123.thumb.jpg",
+      "detailUrl": "123.json",
       "updatedAt": "2025-09-01T12:00:00Z"
     }
   ],
-  "nextPageUrl": "https://museum-example.org/collections/rotterdam/items?page=2"
+  "nextPageUrl": "https://museum-example.org/collections/rotterdam/entries?page=2"
 }</code></pre>
 				<p>
 					See <a href="./optional-collection-access-capabilities.html">Optional Collection Access Capabilities</a>

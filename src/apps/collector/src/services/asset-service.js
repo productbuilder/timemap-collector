@@ -98,6 +98,61 @@ export async function rehydrateLocalDraftAssetUrls(manager) {
   }
 }
 
+function fileNameFromPath(path = '') {
+  const clean = String(path || '').trim().replace(/\\/g, '/');
+  if (!clean) {
+    return '';
+  }
+  const parts = clean.split('/').filter(Boolean);
+  return parts[parts.length - 1] || clean;
+}
+
+export async function hydrateLocalSourceAssetPreviews(manager, sourceId) {
+  const source = manager.getSourceById(sourceId);
+  if (!source || source.providerId !== 'local') {
+    return;
+  }
+  const provider = source.provider;
+  if (!provider || typeof provider.readCollectionFileBlob !== 'function') {
+    return;
+  }
+
+  for (const item of manager.state.assets) {
+    if (item.sourceId !== sourceId) {
+      continue;
+    }
+    const mediaPath = String(item.media?.url || '').trim();
+    const thumbPath = String(item.media?.thumbnailUrl || '').trim();
+    if (!item.fileName && mediaPath) {
+      item.fileName = fileNameFromPath(mediaPath);
+    }
+
+    if (!item.thumbnailPreviewUrl && thumbPath) {
+      try {
+        const thumbBlob = await provider.readCollectionFileBlob(item.collectionId, thumbPath);
+        if (thumbBlob) {
+          item.thumbnailPreviewUrl = URL.createObjectURL(thumbBlob);
+          manager.registerObjectUrl(item.thumbnailPreviewUrl);
+        }
+      } catch (error) {
+        // Keep rendering resilient when local files are missing or inaccessible.
+      }
+    }
+
+    if (!item.previewUrl && mediaPath) {
+      try {
+        const mediaBlob = await provider.readCollectionFileBlob(item.collectionId, mediaPath);
+        if (mediaBlob) {
+          item.previewUrl = URL.createObjectURL(mediaBlob);
+          manager.registerObjectUrl(item.previewUrl);
+        }
+      } catch (error) {
+        // Keep rendering resilient when local files are missing or inaccessible.
+      }
+    }
+  }
+}
+
 export async function ingestImageFiles(manager, files) {
   const source = manager.getActiveIngestionSource();
   if (!source) {
@@ -116,9 +171,107 @@ export async function ingestImageFiles(manager, files) {
   }
 
   const collectionId = manager.ensureCollectionForSource(source);
+  if (!collectionId) {
+    manager.setStatus('Create or select a collection before adding images.', 'warn');
+    return;
+  }
   const collectionLabel = manager.collectionLabelFor(source, collectionId);
   const collectionRootPath = manager.activeCollectionRootPath() || manager.normalizeCollectionRootPath(`${collectionId}/`, collectionId);
   const created = [];
+
+  if (source.providerId === 'local' && source.provider && typeof source.provider.addAssetToCollection === 'function') {
+    for (const file of accepted) {
+      const ext = manager.extensionFromName(file.name, '.jpg');
+      const baseId = manager.slugifySegment(file.name.replace(/\.[^.]+$/, ''), 'image');
+      const itemId = manager.uniqueDraftItemId(baseId, source.id, collectionId);
+      const title = manager.readableTitleFromFilename(file.name, itemId);
+      const mediaRepoPath = `${itemId}${ext}`;
+      const thumbRepoPath = `${itemId}.thumb.jpg`;
+
+      let thumbnailBlob = null;
+      let thumbnailPreviewUrl = '';
+      try {
+        thumbnailBlob = await generateThumbnailBlob(manager, file);
+      } catch (error) {
+        thumbnailBlob = null;
+      }
+
+      if (thumbnailBlob) {
+        thumbnailPreviewUrl = URL.createObjectURL(thumbnailBlob);
+        manager.registerObjectUrl(thumbnailPreviewUrl);
+      }
+
+      let savedItem = null;
+      try {
+        savedItem = await source.provider.addAssetToCollection(collectionId, {
+          itemId,
+          title,
+          file,
+          thumbnailBlob,
+          mediaType: 'image',
+          mediaPath: mediaRepoPath,
+          thumbnailPath: thumbnailBlob ? thumbRepoPath : '',
+          include: true,
+          source: `${collectionId}/collection.json`,
+        });
+      } catch (error) {
+        manager.setStatus(`Failed to save ${file.name} to local host: ${error.message}`, 'warn');
+        continue;
+      }
+
+      if (!savedItem) {
+        continue;
+      }
+
+      const workspaceId = manager.toWorkspaceItemId(source.id, savedItem.id);
+      const previewUrl = URL.createObjectURL(file);
+      manager.registerObjectUrl(previewUrl);
+      created.push({
+        ...savedItem,
+        fileName: file.name || mediaRepoPath,
+        previewUrl,
+        thumbnailPreviewUrl,
+        thumbnailRepoPath: savedItem.media?.thumbnailUrl || (thumbnailBlob ? thumbRepoPath : ''),
+        isLocalDraftAsset: false,
+        draftUploadStatus: 'uploaded',
+        uploadError: '',
+        sourceAssetId: savedItem.id,
+        workspaceId,
+        sourceId: source.id,
+        sourceLabel: source.label,
+        sourceDisplayLabel: source.displayLabel || source.label,
+        providerId: source.providerId,
+        collectionId: savedItem.collectionId || collectionId,
+        collectionLabel: savedItem.collectionLabel || collectionLabel,
+        collectionRootPath: savedItem.collectionRootPath || collectionRootPath,
+        localFileRef: '',
+        localThumbnailRef: '',
+      });
+    }
+
+    if (created.length === 0) {
+      return;
+    }
+
+    manager.state.assets = [...manager.state.assets, ...created];
+    manager.refreshSourceCollectionsAndCounts(source.id);
+    manager.state.selectedCollectionId = collectionId;
+    manager.state.selectedItemId = created[0]?.workspaceId || null;
+    manager.renderSourcesList();
+    manager.renderSourceFilter();
+    manager.renderCollectionFilter();
+    manager.renderAssets();
+    manager.renderEditor();
+    if (manager.state.opfsAvailable) {
+      await manager.saveLocalDraft();
+    }
+
+    manager.setStatus(
+      `${created.length} file${created.length === 1 ? '' : 's'} saved to local host collection ${collectionId}.`,
+      'ok',
+    );
+    return;
+  }
 
   for (const file of accepted) {
     const ext = manager.extensionFromName(file.name, '.jpg');

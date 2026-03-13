@@ -43,6 +43,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
     this._autosaveTimer = null;
     this.localAssetBlobs = new Map();
     this.objectUrls = new Set();
+    this.selectedLocalDirectoryHandle = null;
 
     this.providerFactories = {
       local: createLocalProvider(),
@@ -728,14 +729,25 @@ class OpenCollectionsManagerElement extends HTMLElement {
       return null;
     }
 
-    if (source.providerId !== 'github') {
-      this.setStatus('Image upload publishing is currently implemented for GitHub sources only.', 'warn');
+    if (source.providerId !== 'github' && source.providerId !== 'local') {
+      this.setStatus('Image upload is currently available for GitHub and local folder hosts.', 'warn');
       return null;
     }
 
-    if (source.needsReconnect || source.needsCredentials) {
+    if (source.providerId === 'github' && (source.needsReconnect || source.needsCredentials)) {
       this.setStatus('Reconnect the selected GitHub source before adding local draft assets.', 'warn');
       return null;
+    }
+
+    if (source.providerId === 'local') {
+      if (source.needsReconnect || !source.provider) {
+        this.setStatus('Reconnect the selected local host before adding images.', 'warn');
+        return null;
+      }
+      if (!source.capabilities?.canSaveMetadata) {
+        this.setStatus('Selected local host is read-only. Reconnect with a writable folder.', 'warn');
+        return null;
+      }
     }
 
     return source;
@@ -744,6 +756,21 @@ class OpenCollectionsManagerElement extends HTMLElement {
   ensureCollectionForSource(source) {
     const preferred = (this.state.selectedCollectionId || '').trim();
     const existing = source.collections || [];
+    if (source.providerId === 'local') {
+      if (preferred && preferred !== 'all' && existing.some((entry) => entry.id === preferred)) {
+        source.selectedCollectionId = preferred;
+        return preferred;
+      }
+      if (source.selectedCollectionId && existing.some((entry) => entry.id === source.selectedCollectionId)) {
+        return source.selectedCollectionId;
+      }
+      const firstLocal = existing[0]?.id || '';
+      if (firstLocal) {
+        source.selectedCollectionId = firstLocal;
+      }
+      return firstLocal;
+    }
+
     if (preferred && preferred !== 'all') {
       if (!existing.some((entry) => entry.id === preferred)) {
         const localEntry = this.state.localDraftCollections.find((entry) => entry.id === preferred);
@@ -807,13 +834,21 @@ class OpenCollectionsManagerElement extends HTMLElement {
     return AssetService.rehydrateLocalDraftAssetUrls(this);
   }
 
+  async hydrateLocalSourceAssetPreviews(sourceId) {
+    return AssetService.hydrateLocalSourceAssetPreviews(this, sourceId);
+  }
+
   refreshSourceCollectionsAndCounts(sourceId) {
     const source = this.getSourceById(sourceId);
     if (!source) {
       return;
     }
     const sourceAssets = this.state.assets.filter((item) => item.sourceId === sourceId);
-    source.collections = this.buildCollectionsForSource(source, sourceAssets);
+    const nextCollections = this.buildCollectionsForSource(source, sourceAssets);
+    source.collections = nextCollections.map((collection) => {
+      const existing = (source.collections || []).find((entry) => entry.id === collection.id);
+      return existing ? { ...existing, ...collection } : collection;
+    });
     source.itemCount = sourceAssets.length;
     if (!source.collections.some((entry) => entry.id === source.selectedCollectionId)) {
       source.selectedCollectionId = source.collections[0]?.id || null;
@@ -908,10 +943,10 @@ class OpenCollectionsManagerElement extends HTMLElement {
     const config = this.dom.sourceManager?.getProviderConfig(providerId) || {};
     if (providerId === 'local') {
       config.localDirectoryName = (config.localDirectoryName || '').trim();
-      if (config.localDirectoryName) {
-        config.path = (config.path || '').trim() || `${config.localDirectoryName}/collections.json`;
-      } else {
-        config.path = (config.path || '').trim() || COLLECTOR_CONFIG.defaultLocalManifestPath;
+      config.path = (config.path || '').trim()
+        || (config.localDirectoryName ? config.localDirectoryName : COLLECTOR_CONFIG.defaultLocalManifestPath);
+      if (this.selectedLocalDirectoryHandle && this.selectedLocalDirectoryHandle.kind === 'directory') {
+        config.localDirectoryHandle = this.selectedLocalDirectoryHandle;
       }
     }
     if (providerId === 'gdrive') {
@@ -930,9 +965,10 @@ class OpenCollectionsManagerElement extends HTMLElement {
     try {
       const handle = await window.showDirectoryPicker();
       const folderName = (handle?.name || '').trim() || 'Selected folder';
+      this.selectedLocalDirectoryHandle = handle || null;
       this.dom.sourceManager?.setConfigValues({
         localFolderName: folderName,
-        localPathInput: `${folderName}/collections.json`,
+        localPathInput: folderName,
       });
       this.dom.sourceManager?.setLocalFolderStatus(`Selected folder: ${folderName}`, 'ok');
       this.setStatus(`Selected local folder: ${folderName}`, 'ok');
@@ -1020,7 +1056,11 @@ class OpenCollectionsManagerElement extends HTMLElement {
     }
 
     if (providerId === 'local') {
-      return (config.localDirectoryName || '').trim() || (config.path || '').trim() || 'Local folder';
+      const folderName = (config.localDirectoryName || '').trim();
+      if (folderName) {
+        return `${folderName} (host root)`;
+      }
+      return (config.path || '').trim() || 'Local folder';
     }
 
     return fallbackLabel || 'Source';
@@ -1233,6 +1273,9 @@ class OpenCollectionsManagerElement extends HTMLElement {
           if (entry.providerId === 'gdrive' && entry.config?.sourceMode === 'auth-manifest-file') {
             return 'Remembered storage source. Google access token is session-only; reconnect authentication before refresh.';
           }
+          if (entry.providerId === 'local' && entry.config?.localDirectoryName) {
+            return 'Remembered local host. Re-select the folder before refresh because browser folder handles are session-scoped.';
+          }
           return 'Remembered storage source. Click Refresh to reconnect.';
         })(),
         authMode:
@@ -1353,8 +1396,13 @@ class OpenCollectionsManagerElement extends HTMLElement {
   normalizeSourceAssets(source, rawItems) {
     return (rawItems || []).map((item) => {
       const sourceAssetId = item.id;
+      const mediaPath = String(item.media?.url || '').trim();
+      const fileName = mediaPath
+        ? mediaPath.replace(/\\/g, '/').split('/').filter(Boolean).pop() || mediaPath
+        : '';
       return {
         ...item,
+        fileName: item.fileName || fileName,
         workspaceId: toWorkspaceItemId(source.id, sourceAssetId),
         sourceAssetId,
         sourceId: source.id,
@@ -1397,6 +1445,26 @@ class OpenCollectionsManagerElement extends HTMLElement {
         rootPath: this.normalizeCollectionRootPath(`${fallbackId}/`, fallbackId),
       },
     ];
+  }
+
+  normalizeCollectionsFromProvider(entries = []) {
+    if (!Array.isArray(entries)) {
+      return [];
+    }
+    return entries
+      .filter((entry) => entry && typeof entry === 'object' && entry.id)
+      .map((entry) => ({
+        id: String(entry.id),
+        title: entry.title || String(entry.id),
+        description: entry.description || '',
+        license: entry.license || '',
+        publisher: entry.publisher || '',
+        language: entry.language || '',
+        rootPath: this.normalizeCollectionRootPath(entry.rootPath || `${entry.id}/`, entry.id),
+        path: entry.path || '',
+        collectionJsonPath: entry.collectionJsonPath || '',
+        updatedAt: entry.updatedAt || '',
+      }));
   }
 
   mergeSourceAssets(sourceId, nextItems) {
@@ -1693,7 +1761,10 @@ class OpenCollectionsManagerElement extends HTMLElement {
           providerId: current.providerId,
         };
         this.state.assets = this.state.assets.map((item) => (item.workspaceId === id ? next : item));
-        this.setStatus('Metadata saved to GitHub.', 'ok');
+        this.setStatus(
+          source?.providerId === 'github' ? 'Metadata saved to GitHub.' : 'Metadata saved.',
+          'ok',
+        );
       } catch (error) {
         this.state.assets = this.state.assets.map((item) => {
           if (item.workspaceId !== id) {
@@ -1752,48 +1823,9 @@ class OpenCollectionsManagerElement extends HTMLElement {
 
     const config = this.collectCurrentProviderConfig(providerId);
 
-    if (providerId === 'local' && !config.localDirectoryName) {
+    if (providerId === 'local' && !config.localDirectoryHandle) {
       this.setConnectionStatus('Select a local folder first.', false);
       this.setStatus('Select a local folder before adding this host.', 'warn');
-      return;
-    }
-
-    if (providerId === 'local' && config.localDirectoryName) {
-      const displayLabel = this.sourceDisplayLabelFor(providerId, config, selectedProvider?.label || providerId);
-      const detailLabel = this.sourceDetailLabelFor(providerId, config, selectedProvider?.label || providerId);
-      const source = {
-        id: makeSourceId(providerId),
-        providerId,
-        providerLabel: selectedProvider?.label || providerId,
-        label: detailLabel,
-        displayLabel,
-        detailLabel,
-        config,
-        capabilities: this.providerFactories.local.getCapabilities(),
-        status: 'Local folder selected. Browser folder access is currently metadata-only in this view.',
-        authMode: 'local-folder',
-        itemCount: 0,
-        provider: null,
-        needsReconnect: false,
-        needsCredentials: false,
-        collections: [],
-        selectedCollectionId: null,
-      };
-      this.state.sources = [...this.state.sources, source];
-      this.state.activeSourceFilter = source.id;
-      this.state.selectedCollectionId = 'all';
-      this.state.currentLevel = 'collections';
-      this.state.openedCollectionId = null;
-      this.state.selectedItemId = null;
-      this.syncMetadataModeFromState();
-      this.closeMobileEditor();
-      this.setConnectionStatus('Local folder host added.', true);
-      this.setStatus(`Added local folder host ${displayLabel}.`, 'ok');
-      this.renderSourcesList();
-      this.renderSourceFilter();
-      this.renderAssets();
-      this.renderEditor();
-      this.saveSourcesToStorage();
       return;
     }
 
@@ -1829,6 +1861,9 @@ class OpenCollectionsManagerElement extends HTMLElement {
         derivedConfig._normalizedFileId = result.fileId || '';
         derivedConfig._normalizedManifestUrl = result.normalizedManifestUrl || '';
       }
+      if (providerId === 'local' && result.sourceDisplayLabel) {
+        derivedConfig.localDirectoryName = result.sourceDisplayLabel;
+      }
       const displayLabel =
         result.sourceDisplayLabel ||
         this.sourceDisplayLabelFor(providerId, derivedConfig, selectedProvider?.label || providerId);
@@ -1850,6 +1885,8 @@ class OpenCollectionsManagerElement extends HTMLElement {
             ? (config.token || '').trim()
               ? 'token'
               : 'public'
+            : providerId === 'local' && config.localDirectoryHandle
+              ? 'local-folder'
             : providerId === 'gdrive' && config.sourceMode === 'auth-manifest-file'
               ? 'google-auth'
               : 'public',
@@ -1862,7 +1899,10 @@ class OpenCollectionsManagerElement extends HTMLElement {
       };
 
       const normalized = this.normalizeSourceAssets(source, loaded);
-      const collections = this.buildCollectionsForSource(source, normalized);
+      const providerCollections = Array.isArray(result.collections)
+        ? this.normalizeCollectionsFromProvider(result.collections)
+        : null;
+      const collections = providerCollections || this.buildCollectionsForSource(source, normalized);
       const defaultCollectionId = collections[0]?.id || null;
       const normalizedWithCollections = normalized.map((item) => ({
         ...item,
@@ -1871,8 +1911,14 @@ class OpenCollectionsManagerElement extends HTMLElement {
       }));
       source.collections = collections;
       source.selectedCollectionId = defaultCollectionId;
+      if (providerId === 'local' && config.localDirectoryHandle) {
+        this.selectedLocalDirectoryHandle = config.localDirectoryHandle;
+      }
       this.state.sources = [...this.state.sources, source];
       this.state.assets = [...this.state.assets, ...normalizedWithCollections];
+      if (providerId === 'local') {
+        await this.hydrateLocalSourceAssetPreviews(source.id);
+      }
       this.state.activeSourceFilter = source.id;
       this.state.selectedCollectionId = source.selectedCollectionId || 'all';
       this.state.currentLevel = 'collections';
@@ -1883,7 +1929,7 @@ class OpenCollectionsManagerElement extends HTMLElement {
       this.state.manifest = null;
       this.dom.manifestPreview.textContent = '{}';
 
-      this.setStatus(`Added storage source ${source.label} (${loaded.length} items).`, 'ok');
+      this.setStatus(`Added storage source ${displayLabel} (${loaded.length} items).`, 'ok');
       this.renderSourcesList();
       this.renderSourceFilter();
       this.renderAssets();
@@ -1929,6 +1975,10 @@ class OpenCollectionsManagerElement extends HTMLElement {
     if (source.providerId === 'local') {
       nextConfigValues.localPathInput = source.config.path || COLLECTOR_CONFIG.defaultLocalManifestPath;
       nextConfigValues.localFolderName = source.config.localDirectoryName || '';
+      this.selectedLocalDirectoryHandle =
+        source.config?.localDirectoryHandle && source.config.localDirectoryHandle.kind === 'directory'
+          ? source.config.localDirectoryHandle
+          : null;
     }
     this.dom.sourceManager?.setConfigValues(nextConfigValues);
 
@@ -1949,7 +1999,14 @@ class OpenCollectionsManagerElement extends HTMLElement {
 
     try {
       const provider = providerFactory();
-      const result = await provider.connect(source.config || {});
+      const refreshConfig = { ...(source.config || {}) };
+      if (source.providerId === 'local' && this.selectedLocalDirectoryHandle) {
+        refreshConfig.localDirectoryHandle = this.selectedLocalDirectoryHandle;
+        if (!refreshConfig.localDirectoryName) {
+          refreshConfig.localDirectoryName = this.selectedLocalDirectoryHandle.name || refreshConfig.localDirectoryName || '';
+        }
+      }
+      const result = await provider.connect(refreshConfig);
       if (!result.ok) {
         const next = {
           ...source,
@@ -1968,11 +2025,14 @@ class OpenCollectionsManagerElement extends HTMLElement {
       }
 
       const loaded = await provider.listAssets();
-      const refreshedConfig = { ...(source.config || {}) };
+      const refreshedConfig = { ...refreshConfig };
       if (source.providerId === 'gdrive') {
         refreshedConfig._manifestTitle = result.sourceDisplayLabel || source.displayLabel || '';
         refreshedConfig._normalizedFileId = result.fileId || source.config?.fileId || '';
         refreshedConfig._normalizedManifestUrl = result.normalizedManifestUrl || '';
+      }
+      if (source.providerId === 'local' && result.sourceDisplayLabel) {
+        refreshedConfig.localDirectoryName = result.sourceDisplayLabel;
       }
       const displayLabel =
         result.sourceDisplayLabel || this.sourceDisplayLabelFor(source.providerId, refreshedConfig, source.providerLabel);
@@ -1994,18 +2054,21 @@ class OpenCollectionsManagerElement extends HTMLElement {
         config:
           source.providerId === 'gdrive'
             ? {
-                ...(source.config || {}),
+                ...refreshConfig,
                 fileId: result.fileId || source.config?.fileId || '',
                 sourceMode: source.config?.sourceMode || 'public-manifest-url',
               }
-            : source.config,
+            : refreshConfig,
         collections: source.collections || [],
         selectedCollectionId: source.selectedCollectionId || null,
         needsReconnect: false,
         needsCredentials: false,
       };
       const normalized = this.normalizeSourceAssets(updatedSource, loaded);
-      const collections = this.buildCollectionsForSource(updatedSource, normalized);
+      const providerCollections = Array.isArray(result.collections)
+        ? this.normalizeCollectionsFromProvider(result.collections)
+        : null;
+      const collections = providerCollections || this.buildCollectionsForSource(updatedSource, normalized);
       const defaultCollectionId = collections[0]?.id || null;
       const normalizedWithCollections = normalized.map((item) => ({
         ...item,
@@ -2020,6 +2083,9 @@ class OpenCollectionsManagerElement extends HTMLElement {
 
       this.state.sources = this.state.sources.map((entry) => (entry.id === sourceId ? updatedSource : entry));
       this.mergeSourceAssets(sourceId, normalizedWithCollections);
+      if (source.providerId === 'local') {
+        await this.hydrateLocalSourceAssetPreviews(sourceId);
+      }
 
       if (this.state.selectedItemId && !this.state.assets.some((item) => item.workspaceId === this.state.selectedItemId)) {
         this.state.selectedItemId = this.getVisibleAssets()[0]?.workspaceId || this.state.assets[0]?.workspaceId || null;

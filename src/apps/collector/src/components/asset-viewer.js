@@ -121,7 +121,10 @@ class OpenCollectionsAssetViewerElement extends HTMLElement {
     badges.append(sourceBadge, typeBadge, licenseBadge);
 
     const mediaType = (item.media?.type || '').toLowerCase();
-    const mediaUrl = item.previewUrl || item.thumbnailPreviewUrl || item.media?.url || item.media?.thumbnailUrl || '';
+    const isLocal = item.providerId === 'local';
+    const mediaUrl = isLocal
+      ? (item.previewUrl || item.thumbnailPreviewUrl || '')
+      : (item.previewUrl || item.thumbnailPreviewUrl || item.media?.url || item.media?.thumbnailUrl || '');
     if (mediaUrl && mediaType.includes('image')) {
       const image = document.createElement('img');
       image.className = 'viewer-image';
@@ -144,7 +147,9 @@ class OpenCollectionsAssetViewerElement extends HTMLElement {
       media.appendChild(placeholder);
     }
 
-    const openOriginalUrl = item.media?.url || mediaUrl;
+    const openOriginalUrl = isLocal
+      ? (item.previewUrl || item.thumbnailPreviewUrl || '')
+      : (item.media?.url || mediaUrl);
     if (openOriginalUrl) {
       openOriginal.href = openOriginalUrl;
       openOriginal.classList.remove('is-hidden');

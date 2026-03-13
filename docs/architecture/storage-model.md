@@ -32,22 +32,31 @@ repository or bucket
 │
 ├─ maps/
 │  ├─ collection.json
-│  ├─ items/
-│  │  ├─ map1.jpg
-│  │  ├─ map2.jpg
+│  ├─ map1.jpg
+│  ├─ map2.jpg
 │
 ├─ photos/
 │  ├─ collection.json
-│  ├─ items/
-│  │  ├─ photo1.jpg
-│  │  ├─ photo2.jpg
+│  ├─ photo1.jpg
+│  ├─ photo2.jpg
 ```
 
 Roles:
 
-- `collections.json`: index of available collections
+- `collections.json`: host-level index of available collections
 - `collection.json`: manifest for one collection
-- media assets: the actual files referenced by items (images, documents, video, datasets)
+- collection files: media and other files referenced by that collection, stored beside `collection.json`
+
+Minimal `collections.json` example:
+
+```json
+{
+  "collections": [
+    { "id": "maps", "manifest": "maps/collection.json" },
+    { "id": "photos", "manifest": "photos/collection.json" }
+  ]
+}
+```
 
 ## Supported Storage Types
 
@@ -146,7 +155,7 @@ The Manager connects to storage hosts and edits collections directly in those lo
 Typical workflow:
 
 Host  
--> Source  
+-> `collections.json`  
 -> Collections  
 -> Items
 
