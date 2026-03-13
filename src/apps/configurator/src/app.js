@@ -9,6 +9,7 @@ import {
   createWorkspaceState,
   sourceDescriptorLabel,
 } from './workspace/source-model.js';
+import { loadWorkspaceSnapshot, saveWorkspaceSnapshot } from './workspace/workspace-persistence.js';
 
 const WORKSPACES = new Set(['general', 'products', 'materials']);
 
@@ -474,14 +475,26 @@ class OpenConfiguratorManagerElement extends HTMLElement {
       pendingNewCollectionWorkspace: null,
       pendingNewCollectionName: '',
     };
+    this.persistenceTimer = null;
+    this.isRestoringWorkspace = false;
   }
 
-  connectedCallback() {
+  async connectedCallback() {
     this.render();
     this.cacheDom();
     this.bindEvents();
+    this.isRestoringWorkspace = true;
+    await this.restorePersistedWorkspaceState();
+    this.isRestoringWorkspace = false;
     this.recomputeDerivedState();
     this.refreshAll();
+  }
+
+  disconnectedCallback() {
+    if (this.persistenceTimer) {
+      clearTimeout(this.persistenceTimer);
+      this.persistenceTimer = null;
+    }
   }
 
   render() {
@@ -641,14 +654,14 @@ class OpenConfiguratorManagerElement extends HTMLElement {
       this.renderInspector();
     });
 
-    this.dom.sectionBrowser.addEventListener('section-open', (event) => {
+    this.dom.sectionBrowser.addEventListener('section-open', async (event) => {
       const index = Number(event.detail?.index);
       if (!Number.isInteger(index)) {
         return;
       }
       this.state.selectedEntryRef = { index };
       if (this.state.currentLevel === 'products-collections' || this.state.currentLevel === 'materials-collections') {
-        this.openCollectionAtIndex(index);
+        await this.openCollectionAtIndex(index);
         return;
       }
       if (
@@ -724,15 +737,15 @@ class OpenConfiguratorManagerElement extends HTMLElement {
 
     this.dom.setOrganizationSourceBtn?.addEventListener('click', async () => {
       this.closeDialog('sourcesDialog');
-      await this.openManufacturerFile();
+      await this.openOrganizationSourceFolder();
     });
     this.dom.setProductsSourceBtn?.addEventListener('click', async () => {
       this.closeDialog('sourcesDialog');
-      await this.openCollectionFile('products');
+      await this.openProductsSourceFolder();
     });
     this.dom.setMaterialsSourceBtn?.addEventListener('click', async () => {
       this.closeDialog('sourcesDialog');
-      await this.openCollectionFile('materials');
+      await this.openMaterialsSourceFolder();
     });
     this.dom.setPackagesSourceBtn?.addEventListener('click', async () => {
       this.closeDialog('sourcesDialog');
@@ -761,6 +774,12 @@ class OpenConfiguratorManagerElement extends HTMLElement {
 
   organizationsFromManufacturerSource() {
     const source = this.manufacturerSource();
+    if (Array.isArray(source?.discoveredOrganizations) && source.discoveredOrganizations.length > 0) {
+      return source.discoveredOrganizations.map((entry) => ({
+        id: String(entry.id || entry.folderName || '').trim(),
+        label: String(entry.label || entry.folderName || entry.id || '').trim() || 'Organization',
+      })).filter((entry) => entry.id);
+    }
     const raw = Array.isArray(source?.data?.organizations) ? source.data.organizations : [];
     const normalized = raw
       .map((entry, index) => {
@@ -843,13 +862,20 @@ class OpenConfiguratorManagerElement extends HTMLElement {
     }
   }
 
-  confirmOrganizationSelection() {
+  async confirmOrganizationSelection() {
     const nextId = String(this.state.pendingOrganizationId || '').trim();
     if (!nextId) {
       return;
     }
     this.state.workspace.currentOrganizationId = nextId;
-    this.setStatus(`Organization switched to ${this.currentOrganizationLabel()}.`);
+    try {
+      await this.loadOrganizationInfoForCurrentSelection();
+      await this.resolveProductsSourceForCurrentOrganization();
+      await this.resolveMaterialsSourceForCurrentOrganization();
+      this.setStatus(`Organization switched to ${this.currentOrganizationLabel()}.`);
+    } catch (error) {
+      this.setStatus(`Could not load organization info: ${error.message}`);
+    }
     this.closeDialog('organizationDialog');
     this.refreshAll();
   }
@@ -868,23 +894,43 @@ class OpenConfiguratorManagerElement extends HTMLElement {
     if (source.isDirty) {
       bits.push('unsaved');
     }
+    if (source.needsReconnect) {
+      bits.push('reconnect needed');
+    }
     return bits.filter(Boolean).join(' | ');
   }
 
   renderSourcesDialog() {
     const manufacturer = this.manufacturerSource();
-    const products = this.selectedProductSource();
+    const productsRoot = this.productSource();
+    const materialsRoot = this.materialRootSource();
     const materials = this.materialSources();
     const packages = this.packagesSource();
 
     if (this.dom.organizationSourceSummary) {
-      this.dom.organizationSourceSummary.textContent = this.sourceSummary(manufacturer);
+      const discoveredCount = Array.isArray(manufacturer?.discoveredOrganizations)
+        ? manufacturer.discoveredOrganizations.length
+        : 0;
+      if (manufacturer?.connectionType === 'local-folder') {
+        this.dom.organizationSourceSummary.textContent = `${this.sourceSummary(manufacturer)} | ${discoveredCount} org${discoveredCount === 1 ? '' : 's'}`;
+      } else {
+        this.dom.organizationSourceSummary.textContent = this.sourceSummary(manufacturer);
+      }
     }
     if (this.dom.productsSourceSummary) {
-      this.dom.productsSourceSummary.textContent = this.sourceSummary(products);
+      const discoveredCount = Array.isArray(productsRoot?.discoveredCollections)
+        ? productsRoot.discoveredCollections.length
+        : 0;
+      if (productsRoot?.connectionType === 'local-folder') {
+        this.dom.productsSourceSummary.textContent = `${this.sourceSummary(productsRoot)} | ${discoveredCount} product${discoveredCount === 1 ? '' : 's'}`;
+      } else {
+        this.dom.productsSourceSummary.textContent = this.sourceSummary(productsRoot);
+      }
     }
     if (this.dom.materialsSourceSummary) {
-      if (materials.length === 0) {
+      if (materialsRoot?.connectionType === 'local-folder') {
+        this.dom.materialsSourceSummary.textContent = `${this.sourceSummary(materialsRoot)} | ${materials.length} material collection${materials.length === 1 ? '' : 's'}`;
+      } else if (materials.length === 0) {
         this.dom.materialsSourceSummary.textContent = 'Missing';
       } else {
         this.dom.materialsSourceSummary.textContent = `${materials.length} connected source${materials.length === 1 ? '' : 's'}`;
@@ -905,10 +951,10 @@ class OpenConfiguratorManagerElement extends HTMLElement {
       this.dom.setOrganizationSourceBtn.textContent = manufacturer ? 'Replace source' : 'Set source';
     }
     if (this.dom.setProductsSourceBtn) {
-      this.dom.setProductsSourceBtn.textContent = products ? 'Replace source' : 'Set source';
+      this.dom.setProductsSourceBtn.textContent = productsRoot ? 'Replace source' : 'Set source';
     }
     if (this.dom.setMaterialsSourceBtn) {
-      this.dom.setMaterialsSourceBtn.textContent = materials.length > 0 ? 'Add / replace source' : 'Set source';
+      this.dom.setMaterialsSourceBtn.textContent = materialsRoot ? 'Replace source' : 'Set source';
     }
     if (this.dom.setPackagesSourceBtn) {
       this.dom.setPackagesSourceBtn.textContent = packages ? 'Replace source' : 'Set source';
@@ -974,6 +1020,320 @@ class OpenConfiguratorManagerElement extends HTMLElement {
     this.state.pendingNewCollectionName = '';
   }
 
+  minimalDiscoveredOrganizations(list) {
+    return (Array.isArray(list) ? list : []).map((entry) => ({
+      id: String(entry?.id || '').trim(),
+      label: String(entry?.label || '').trim(),
+      folderName: String(entry?.folderName || '').trim(),
+      infoFileName: String(entry?.infoFileName || '').trim(),
+    })).filter((entry) => entry.id);
+  }
+
+  minimalDiscoveredCollections(list) {
+    return (Array.isArray(list) ? list : []).map((entry) => ({
+      sourceId: String(entry?.sourceId || '').trim(),
+      id: String(entry?.id || '').trim(),
+      title: String(entry?.title || '').trim(),
+      label: String(entry?.label || '').trim(),
+      role: String(entry?.role || '').trim(),
+      ownerOrgId: String(entry?.ownerOrgId || '').trim(),
+      ownerOrgName: String(entry?.ownerOrgName || '').trim(),
+      collectionId: String(entry?.collectionId || '').trim(),
+      connectionType: String(entry?.connectionType || '').trim(),
+      fileName: String(entry?.fileName || '').trim(),
+      sourcePath: String(entry?.sourcePath || '').trim(),
+      isLinkedExternal: Boolean(entry?.isLinkedExternal),
+      isDirty: Boolean(entry?.isDirty),
+      orgDirectoryName: String(entry?.orgDirectoryName || '').trim(),
+      productDirectoryName: String(entry?.productDirectoryName || '').trim(),
+      collectionDirectoryName: String(entry?.collectionDirectoryName || '').trim(),
+    })).filter((entry) => entry.sourceId || entry.id);
+  }
+
+  serializeSourceForPersistence(source) {
+    if (!source || typeof source !== 'object') {
+      return null;
+    }
+    return {
+      role: source.role || '',
+      sourceId: source.sourceId || '',
+      label: source.label || '',
+      ownerOrgId: source.ownerOrgId || '',
+      ownerOrgName: source.ownerOrgName || '',
+      collectionId: source.collectionId || '',
+      connectionType: source.connectionType || '',
+      fileHandle: source.fileHandle || null,
+      folderHandle: source.folderHandle || null,
+      fileName: source.fileName || '',
+      sourcePath: source.sourcePath || '',
+      selectedOrganizationId: source.selectedOrganizationId || '',
+      discoveredOrganizations: this.minimalDiscoveredOrganizations(source.discoveredOrganizations),
+      discoveredCollections: this.minimalDiscoveredCollections(source.discoveredCollections),
+      resolvedOrgDirectoryName: source.resolvedOrgDirectoryName || '',
+      isLinkedExternal: Boolean(source.isLinkedExternal),
+      isDirty: Boolean(source.isDirty),
+      isConnected: source.isConnected !== false,
+      needsReconnect: Boolean(source.needsReconnect),
+      restoreError: source.restoreError || '',
+    };
+  }
+
+  inflateSourceFromPersistence(raw) {
+    if (!raw || typeof raw !== 'object') {
+      return null;
+    }
+    return createSourceDescriptor({
+      ...raw,
+      data: null,
+      validation: createEmptyValidation(),
+    });
+  }
+
+  buildWorkspaceSnapshot() {
+    return {
+      version: 1,
+      savedAt: Date.now(),
+      currentOrganizationId: this.currentOrganizationId() || '',
+      activeWorkspace: this.state.activeWorkspace || 'general',
+      activeProductSourceId: this.state.workspace.activeProductSourceId || '',
+      activeMaterialSourceId: this.state.workspace.activeMaterialSourceId || '',
+      organizations: Array.isArray(this.state.organizations) ? this.state.organizations : [],
+      sources: {
+        organization: this.serializeSourceForPersistence(this.manufacturerSource()),
+        products: this.serializeSourceForPersistence(this.productSource()),
+        materialsRoot: this.serializeSourceForPersistence(this.materialRootSource()),
+        materials: this.materialSources().map((entry) => this.serializeSourceForPersistence(entry)).filter(Boolean),
+        packages: this.serializeSourceForPersistence(this.packagesSource()),
+      },
+    };
+  }
+
+  async persistWorkspaceState() {
+    try {
+      const snapshot = this.buildWorkspaceSnapshot();
+      await saveWorkspaceSnapshot(snapshot);
+    } catch (_error) {
+      // Best-effort persistence only.
+    }
+  }
+
+  scheduleWorkspacePersistence() {
+    if (this.isRestoringWorkspace) {
+      return;
+    }
+    if (this.persistenceTimer) {
+      clearTimeout(this.persistenceTimer);
+    }
+    this.persistenceTimer = setTimeout(() => {
+      this.persistenceTimer = null;
+      this.persistWorkspaceState().catch(() => {});
+    }, 220);
+  }
+
+  async hasHandleReadPermission(handle) {
+    if (!handle) {
+      return false;
+    }
+    if (typeof handle.queryPermission !== 'function') {
+      return true;
+    }
+    try {
+      const status = await handle.queryPermission({ mode: 'read' });
+      return status === 'granted';
+    } catch (_error) {
+      return false;
+    }
+  }
+
+  markSourceReconnect(source, message) {
+    if (!source || typeof source !== 'object') {
+      return;
+    }
+    source.isConnected = false;
+    source.needsReconnect = true;
+    source.restoreError = String(message || '').trim();
+  }
+
+  clearSourceReconnect(source) {
+    if (!source || typeof source !== 'object') {
+      return;
+    }
+    source.isConnected = true;
+    source.needsReconnect = false;
+    source.restoreError = '';
+  }
+
+  async restorePersistedWorkspaceState() {
+    try {
+      const snapshot = await loadWorkspaceSnapshot();
+      if (!snapshot || typeof snapshot !== 'object') {
+        return;
+      }
+
+      const workspaceId = String(snapshot.activeWorkspace || '').trim();
+      if (WORKSPACES.has(workspaceId)) {
+        this.state.activeWorkspace = workspaceId;
+      }
+      this.state.workspace.currentOrganizationId = String(snapshot.currentOrganizationId || '').trim() || this.state.workspace.currentOrganizationId;
+      this.state.workspace.activeProductSourceId = String(snapshot.activeProductSourceId || '').trim() || null;
+      this.state.workspace.activeMaterialSourceId = String(snapshot.activeMaterialSourceId || '').trim() || null;
+
+      if (Array.isArray(snapshot.organizations) && snapshot.organizations.length > 0) {
+        this.state.organizations = snapshot.organizations
+          .map((entry) => ({
+            id: String(entry?.id || '').trim(),
+            label: String(entry?.label || '').trim() || String(entry?.id || '').trim(),
+          }))
+          .filter((entry) => entry.id);
+      }
+
+      const sources = snapshot.sources && typeof snapshot.sources === 'object' ? snapshot.sources : {};
+      this.state.workspace.sources.manufacturer = this.inflateSourceFromPersistence(sources.organization);
+      this.state.workspace.sources.products = this.inflateSourceFromPersistence(sources.products);
+      this.state.workspace.sources.materialsRoot = this.inflateSourceFromPersistence(sources.materialsRoot);
+      this.state.workspace.sources.packages = this.inflateSourceFromPersistence(sources.packages);
+      this.state.workspace.sources.materials = Array.isArray(sources.materials)
+        ? sources.materials.map((entry) => this.inflateSourceFromPersistence(entry)).filter(Boolean)
+        : [];
+
+      if (this.state.activeWorkspace === 'general') {
+        this.state.currentLevel = 'general-sections';
+      } else if (this.state.activeWorkspace === 'products') {
+        this.state.currentLevel = 'products-collections';
+      } else if (this.state.activeWorkspace === 'materials') {
+        this.state.currentLevel = 'materials-collections';
+      }
+
+      await this.restoreSourceConnectionsAfterLoad();
+    } catch (_error) {
+      // Ignore restore failures and continue with clean runtime state.
+    }
+  }
+
+  async restoreSourceConnectionsAfterLoad() {
+    const manufacturer = this.manufacturerSource();
+    if (manufacturer) {
+      if (manufacturer.connectionType === 'local-folder') {
+        const hasPermission = await this.hasHandleReadPermission(manufacturer.folderHandle);
+        if (!hasPermission) {
+          this.markSourceReconnect(manufacturer, 'Folder permission required.');
+        } else {
+          this.clearSourceReconnect(manufacturer);
+          const discovery = await this.discoverOrganizationsFromRootFolder(manufacturer.folderHandle);
+          manufacturer.discoveredOrganizations = discovery.organizations;
+          if (discovery.organizations.length > 0) {
+            this.state.organizations = discovery.organizations.map((entry) => ({ id: entry.id, label: entry.label }));
+            if (!this.state.organizations.some((entry) => entry.id === this.currentOrganizationId())) {
+              this.state.workspace.currentOrganizationId = this.state.organizations[0].id;
+            }
+            await this.loadOrganizationInfoForCurrentSelection();
+          } else {
+            this.state.organizations = [];
+            manufacturer.data = null;
+          }
+        }
+      } else if (manufacturer.connectionType === 'local-file') {
+        const hasPermission = await this.hasHandleReadPermission(manufacturer.fileHandle);
+        if (!hasPermission) {
+          this.markSourceReconnect(manufacturer, 'File permission required.');
+        } else {
+          try {
+            const file = await manufacturer.fileHandle.getFile();
+            const parsed = JSON.parse(await file.text());
+            manufacturer.data = isPlainObject(parsed) ? parsed : null;
+            manufacturer.validation = validateDataRoot('general', manufacturer.data);
+            this.clearSourceReconnect(manufacturer);
+          } catch (error) {
+            this.markSourceReconnect(manufacturer, error.message);
+          }
+        }
+      }
+    }
+
+    const productsRoot = this.productSource();
+    if (productsRoot) {
+      if (productsRoot.connectionType === 'local-folder') {
+        const hasPermission = await this.hasHandleReadPermission(productsRoot.folderHandle);
+        if (!hasPermission) {
+          this.markSourceReconnect(productsRoot, 'Folder permission required.');
+        } else {
+          this.clearSourceReconnect(productsRoot);
+          await this.resolveProductsSourceForCurrentOrganization();
+        }
+      } else if (productsRoot.connectionType === 'local-file') {
+        const hasPermission = await this.hasHandleReadPermission(productsRoot.fileHandle);
+        if (!hasPermission) {
+          this.markSourceReconnect(productsRoot, 'File permission required.');
+        } else {
+          try {
+            const file = await productsRoot.fileHandle.getFile();
+            const parsed = JSON.parse(await file.text());
+            productsRoot.data = isPlainObject(parsed) ? parsed : null;
+            productsRoot.validation = validateDataRoot('products', productsRoot.data);
+            this.clearSourceReconnect(productsRoot);
+          } catch (error) {
+            this.markSourceReconnect(productsRoot, error.message);
+          }
+        }
+      }
+    }
+
+    const materialsRoot = this.materialRootSource();
+    if (materialsRoot) {
+      if (materialsRoot.connectionType === 'local-folder') {
+        const hasPermission = await this.hasHandleReadPermission(materialsRoot.folderHandle);
+        if (!hasPermission) {
+          this.markSourceReconnect(materialsRoot, 'Folder permission required.');
+        } else {
+          this.clearSourceReconnect(materialsRoot);
+          await this.resolveMaterialsSourceForCurrentOrganization();
+        }
+      }
+    } else if (this.materialSources().length > 0) {
+      const nextMaterials = [];
+      for (const entry of this.materialSources()) {
+        const hasPermission = await this.hasHandleReadPermission(entry.fileHandle);
+        if (!hasPermission) {
+          this.markSourceReconnect(entry, 'File permission required.');
+          nextMaterials.push(entry);
+          continue;
+        }
+        try {
+          const file = await entry.fileHandle.getFile();
+          const parsed = JSON.parse(await file.text());
+          const next = {
+            ...entry,
+            data: isPlainObject(parsed) ? parsed : null,
+            validation: validateDataRoot('materials', parsed),
+          };
+          this.clearSourceReconnect(next);
+          nextMaterials.push(next);
+        } catch (error) {
+          this.markSourceReconnect(entry, error.message);
+          nextMaterials.push(entry);
+        }
+      }
+      this.state.workspace.sources.materials = nextMaterials;
+    }
+
+    const packages = this.packagesSource();
+    if (packages) {
+      const hasPermission = await this.hasHandleReadPermission(packages.fileHandle);
+      if (!hasPermission) {
+        this.markSourceReconnect(packages, 'File permission required.');
+      } else if (packages.fileHandle) {
+        try {
+          const file = await packages.fileHandle.getFile();
+          const parsed = JSON.parse(await file.text());
+          packages.data = isPlainObject(parsed) ? parsed : null;
+          this.clearSourceReconnect(packages);
+        } catch (error) {
+          this.markSourceReconnect(packages, error.message);
+        }
+      }
+    }
+  }
+
   setStatus(text) {
     const next = String(text || '').trim();
     if (next) {
@@ -986,6 +1346,14 @@ class OpenConfiguratorManagerElement extends HTMLElement {
     return this.state.workspace.currentOrganizationId;
   }
 
+  productsOrgDirectoryName(orgId) {
+    const normalized = String(orgId || '').trim();
+    if (!normalized) {
+      return '';
+    }
+    return normalized.endsWith('-blks') ? normalized : `${normalized}-blks`;
+  }
+
   manufacturerSource() {
     return this.state.workspace.sources.manufacturer;
   }
@@ -996,11 +1364,21 @@ class OpenConfiguratorManagerElement extends HTMLElement {
 
   productSources() {
     const source = this.productSource();
-    return source ? [source] : [];
+    if (!source) {
+      return [];
+    }
+    if (source.connectionType === 'local-folder') {
+      return Array.isArray(source.discoveredCollections) ? source.discoveredCollections : [];
+    }
+    return [source];
   }
 
   packagesSource() {
     return this.state.workspace.sources.packages || null;
+  }
+
+  materialRootSource() {
+    return this.state.workspace.sources.materialsRoot || null;
   }
 
   materialSources() {
@@ -1010,15 +1388,15 @@ class OpenConfiguratorManagerElement extends HTMLElement {
   }
 
   selectedProductSource() {
-    const source = this.productSource();
-    if (!source) {
+    const sources = this.productSources();
+    if (sources.length === 0) {
       return null;
     }
     const activeId = this.state.workspace.activeProductSourceId;
-    if (!activeId || activeId === source.sourceId || activeId === source.id) {
-      return source;
+    if (!activeId) {
+      return sources[0];
     }
-    return source;
+    return sources.find((entry) => entry.sourceId === activeId || entry.id === activeId) || sources[0];
   }
 
   selectedMaterialSource() {
@@ -1290,8 +1668,23 @@ class OpenConfiguratorManagerElement extends HTMLElement {
 
     const products = this.productSource();
     if (products) {
-      products.validation = validateDataRoot('products', products.data);
-      products.isLoaded = isPlainObject(products.data);
+      if (products.connectionType === 'local-folder') {
+        const discovered = Array.isArray(products.discoveredCollections) ? products.discoveredCollections : [];
+        products.discoveredCollections = discovered.map((entry) => {
+          const next = {
+            ...entry,
+            validation: validateDataRoot('products', entry.data),
+            isLoaded: isPlainObject(entry.data),
+          };
+          next.dirty = Boolean(next.isDirty);
+          return next;
+        });
+        products.validation = createEmptyValidation();
+        products.isLoaded = true;
+      } else {
+        products.validation = validateDataRoot('products', products.data);
+        products.isLoaded = isPlainObject(products.data);
+      }
       products.dirty = Boolean(products.isDirty);
     }
 
@@ -1304,6 +1697,9 @@ class OpenConfiguratorManagerElement extends HTMLElement {
       next.dirty = Boolean(next.isDirty);
       return next;
     });
+    if (this.materialRootSource()?.connectionType === 'local-folder') {
+      this.state.workspace.sources.materialsRoot.discoveredCollections = this.state.workspace.sources.materials;
+    }
 
     this.rebuildRelationOptions();
     this.refreshExportSnapshot();
@@ -1582,6 +1978,9 @@ class OpenConfiguratorManagerElement extends HTMLElement {
     if (source.isDirty) {
       parts.push('Unsaved');
     }
+    if (source.needsReconnect) {
+      parts.push('Reconnect needed');
+    }
     return parts.join(' | ');
   }
 
@@ -1639,8 +2038,9 @@ class OpenConfiguratorManagerElement extends HTMLElement {
       }));
       model.showViewToggle = false;
       model.arrayPresentation = 'section-nav';
-      if (sources[0]) {
-        model.sourceMeta = this.sourceMetaText(sources[0]);
+      const productsRoot = this.productSource();
+      if (productsRoot) {
+        model.sourceMeta = this.sourceMetaText(productsRoot);
       }
       return model;
     }
@@ -1905,6 +2305,7 @@ class OpenConfiguratorManagerElement extends HTMLElement {
     this.renderHeader();
     this.renderBrowser();
     this.renderInspector();
+    this.scheduleWorkspacePersistence();
   }
   async handlePanelAction(actionId) {
     if (actionId === 'new-manufacturer') {
@@ -1928,11 +2329,21 @@ class OpenConfiguratorManagerElement extends HTMLElement {
       return;
     }
     if (actionId === 'open-product-collection-file') {
-      await this.openCollectionFile('products');
+      if (this.productSource()?.connectionType === 'local-folder') {
+        await this.resolveProductsSourceForCurrentOrganization();
+        this.refreshAll();
+      } else {
+        await this.openCollectionFile('products');
+      }
       return;
     }
     if (actionId === 'open-material-collection-file') {
-      await this.openCollectionFile('materials');
+      if (this.materialRootSource()?.connectionType === 'local-folder') {
+        await this.resolveMaterialsSourceForCurrentOrganization();
+        this.refreshAll();
+      } else {
+        await this.openCollectionFile('materials');
+      }
       return;
     }
     if (actionId === 'save-product-collection') {
@@ -1957,11 +2368,11 @@ class OpenConfiguratorManagerElement extends HTMLElement {
     }
   }
 
-  openSelectedCollection() {
-    this.openCollectionAtIndex(Number(this.state.selectedEntryRef?.index));
+  async openSelectedCollection() {
+    await this.openCollectionAtIndex(Number(this.state.selectedEntryRef?.index));
   }
 
-  openCollectionAtIndex(index) {
+  async openCollectionAtIndex(index) {
     const entries = this.currentListEntries();
     if (!Number.isInteger(index) || index < 0 || index >= entries.length) {
       return;
@@ -1973,9 +2384,11 @@ class OpenConfiguratorManagerElement extends HTMLElement {
 
     if (this.state.activeWorkspace === 'products') {
       this.state.workspace.activeProductSourceId = selected.sourceId || selected.id;
+      await this.reloadProductCollectionFromIndex(selected.sourceId || selected.id);
       this.state.currentLevel = 'products-sections';
     } else if (this.state.activeWorkspace === 'materials') {
       this.state.workspace.activeMaterialSourceId = selected.sourceId || selected.id;
+      await this.reloadMaterialCollectionFromSettings(selected.sourceId || selected.id);
       this.state.currentLevel = 'materials-sections';
     }
 
@@ -2070,13 +2483,48 @@ class OpenConfiguratorManagerElement extends HTMLElement {
     collection.dirty = true;
 
     if (workspace === 'products') {
-      this.state.workspace.sources.products = collection;
-      this.state.workspace.activeProductSourceId = collection.sourceId || collection.id;
+      const productsRoot = this.productSource();
+      if (productsRoot?.connectionType === 'local-folder') {
+        const existing = Array.isArray(productsRoot.discoveredCollections) ? productsRoot.discoveredCollections : [];
+        const tempSourceId = `products-temp-${uniqueId}`;
+        productsRoot.discoveredCollections = [
+          ...existing,
+          {
+            ...collection,
+            sourceId: tempSourceId,
+            id: uniqueId,
+            title: resolvedName,
+            fileName: `${uniqueId}/index.json`,
+            sourcePath: `${productsRoot.resolvedOrgDirectoryName || this.productsOrgDirectoryName(this.currentOrganizationId())}/${uniqueId}/index.json`,
+          },
+        ];
+        this.state.workspace.activeProductSourceId = tempSourceId;
+      } else {
+        this.state.workspace.sources.products = collection;
+        this.state.workspace.activeProductSourceId = collection.sourceId || collection.id;
+      }
       this.state.activeWorkspace = 'products';
       this.state.currentLevel = 'products-sections';
     } else {
-      this.state.workspace.sources.materials = [...this.materialSources(), collection];
-      this.state.workspace.activeMaterialSourceId = collection.sourceId || collection.id;
+      const materialsRoot = this.materialRootSource();
+      if (materialsRoot?.connectionType === 'local-folder') {
+        const tempSourceId = `materials-temp-${uniqueId}`;
+        this.state.workspace.sources.materials = [
+          ...this.materialSources(),
+          {
+            ...collection,
+            sourceId: tempSourceId,
+            id: uniqueId,
+            title: resolvedName,
+            fileName: `${uniqueId}/settings.json`,
+            sourcePath: `${materialsRoot.resolvedOrgDirectoryName || `suppliers/${this.currentOrganizationId() || ''}`}/${uniqueId}/settings.json`,
+          },
+        ];
+        this.state.workspace.activeMaterialSourceId = tempSourceId;
+      } else {
+        this.state.workspace.sources.materials = [...this.materialSources(), collection];
+        this.state.workspace.activeMaterialSourceId = collection.sourceId || collection.id;
+      }
       this.state.activeWorkspace = 'materials';
       this.state.currentLevel = 'materials-sections';
     }
@@ -2090,6 +2538,643 @@ class OpenConfiguratorManagerElement extends HTMLElement {
   async openManufacturerFile() {
     this.state.pendingOpenTarget = { type: 'manufacturer' };
     await this.openJsonPicker();
+  }
+
+  async openOrganizationSourceFolder() {
+    if (typeof window.showDirectoryPicker !== 'function') {
+      this.setStatus('Organization source folder selection is not supported in this browser.');
+      return;
+    }
+
+    try {
+      const rootHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      if (!rootHandle) {
+        return;
+      }
+
+      const discovery = await this.discoverOrganizationsFromRootFolder(rootHandle);
+      const source = createSourceDescriptor({
+        role: 'organization-source',
+        sourceId: this.manufacturerSource()?.sourceId || '',
+        label: `Organization source (${rootHandle.name})`,
+        ownerOrgId: '',
+        ownerOrgName: '',
+        connectionType: 'local-folder',
+        folderHandle: rootHandle,
+        fileHandle: null,
+        fileName: '',
+        sourcePath: rootHandle.name || '',
+        selectedOrganizationId: '',
+        discoveredOrganizations: discovery.organizations,
+        isLoaded: true,
+        isDirty: false,
+        data: null,
+        validation: createEmptyValidation(),
+      });
+      source.dirty = false;
+      this.state.workspace.sources.manufacturer = source;
+
+      if (discovery.organizations.length === 0) {
+        this.state.organizations = [];
+        this.state.workspace.currentOrganizationId = '';
+        this.setStatus('Organization source set, but no valid organization folders were found.');
+        this.refreshAll();
+        return;
+      }
+
+      this.state.organizations = discovery.organizations.map((entry) => ({
+        id: entry.id,
+        label: entry.label,
+      }));
+      const current = this.currentOrganizationId();
+      const nextId = discovery.organizations.some((entry) => entry.id === current)
+        ? current
+        : discovery.organizations[0].id;
+      this.state.workspace.currentOrganizationId = nextId;
+      await this.loadOrganizationInfoForCurrentSelection();
+      await this.resolveProductsSourceForCurrentOrganization();
+      await this.resolveMaterialsSourceForCurrentOrganization();
+
+      if (discovery.warnings.length > 0) {
+        this.setStatus(`Organization source set (${discovery.organizations.length} orgs, ${discovery.warnings.length} warning${discovery.warnings.length === 1 ? '' : 's'}).`);
+      } else {
+        this.setStatus(`Organization source set. Discovered ${discovery.organizations.length} organization${discovery.organizations.length === 1 ? '' : 's'}.`);
+      }
+      this.refreshAll();
+    } catch (error) {
+      if (error?.name === 'AbortError') {
+        return;
+      }
+      this.setStatus(`Set organization source failed: ${error.message}`);
+    }
+  }
+
+  async openProductsSourceFolder() {
+    if (typeof window.showDirectoryPicker !== 'function') {
+      this.setStatus('Products source folder selection is not supported in this browser.');
+      return;
+    }
+
+    try {
+      const rootHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      if (!rootHandle) {
+        return;
+      }
+
+      const source = createSourceDescriptor({
+        role: 'products-source',
+        sourceId: this.productSource()?.sourceId || '',
+        label: `Products source (${rootHandle.name})`,
+        ownerOrgId: this.currentOrganizationId(),
+        ownerOrgName: this.currentOrganizationLabel(),
+        connectionType: 'local-folder',
+        folderHandle: rootHandle,
+        fileHandle: null,
+        fileName: '',
+        sourcePath: rootHandle.name || '',
+        discoveredCollections: [],
+        resolvedOrgDirectoryName: '',
+        isLoaded: true,
+        isDirty: false,
+        data: null,
+        validation: createEmptyValidation(),
+      });
+      source.dirty = false;
+      this.state.workspace.sources.products = source;
+
+      await this.resolveProductsSourceForCurrentOrganization();
+
+      const discoveredCount = Array.isArray(source.discoveredCollections) ? source.discoveredCollections.length : 0;
+      if (discoveredCount > 0) {
+        this.setStatus(`Products source set. Discovered ${discoveredCount} product collection${discoveredCount === 1 ? '' : 's'} for ${this.currentOrganizationId() || 'current org'}.`);
+      } else if (!this.currentOrganizationId()) {
+        this.setStatus('Products source set. Select an organization to resolve product collections.');
+      }
+      this.state.activeWorkspace = 'products';
+      this.state.currentLevel = 'products-collections';
+      this.state.activeSectionId = null;
+      this.state.selectedEntryRef = null;
+      this.refreshAll();
+    } catch (error) {
+      if (error?.name === 'AbortError') {
+        return;
+      }
+      this.setStatus(`Set products source failed: ${error.message}`);
+    }
+  }
+
+  async openMaterialsSourceFolder() {
+    if (typeof window.showDirectoryPicker !== 'function') {
+      this.setStatus('Materials source folder selection is not supported in this browser.');
+      return;
+    }
+
+    try {
+      const rootHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      if (!rootHandle) {
+        return;
+      }
+
+      const source = createSourceDescriptor({
+        role: 'materials-source',
+        sourceId: this.materialRootSource()?.sourceId || '',
+        label: `Materials source (${rootHandle.name})`,
+        ownerOrgId: this.currentOrganizationId(),
+        ownerOrgName: this.currentOrganizationLabel(),
+        connectionType: 'local-folder',
+        folderHandle: rootHandle,
+        fileHandle: null,
+        fileName: '',
+        sourcePath: rootHandle.name || '',
+        discoveredCollections: [],
+        resolvedOrgDirectoryName: '',
+        isLoaded: true,
+        isDirty: false,
+        data: null,
+        validation: createEmptyValidation(),
+      });
+      source.dirty = false;
+      this.state.workspace.sources.materialsRoot = source;
+
+      await this.resolveMaterialsSourceForCurrentOrganization();
+
+      const discoveredCount = this.materialSources().length;
+      if (discoveredCount > 0) {
+        this.setStatus(`Materials source set. Discovered ${discoveredCount} material collection${discoveredCount === 1 ? '' : 's'} for ${this.currentOrganizationId() || 'current org'}.`);
+      } else if (!this.currentOrganizationId()) {
+        this.setStatus('Materials source set. Select an organization to resolve material collections.');
+      }
+      this.state.activeWorkspace = 'materials';
+      this.state.currentLevel = 'materials-collections';
+      this.state.activeSectionId = null;
+      this.state.selectedEntryRef = null;
+      this.refreshAll();
+    } catch (error) {
+      if (error?.name === 'AbortError') {
+        return;
+      }
+      this.setStatus(`Set materials source failed: ${error.message}`);
+    }
+  }
+
+  async resolveProductsSourceForCurrentOrganization() {
+    const source = this.productSource();
+    if (!source || source.connectionType !== 'local-folder') {
+      return;
+    }
+
+    const orgId = String(this.currentOrganizationId() || '').trim();
+    if (!orgId) {
+      source.discoveredCollections = [];
+      source.resolvedOrgDirectoryName = '';
+      this.state.workspace.activeProductSourceId = null;
+      return;
+    }
+
+    const orgDirectoryName = this.productsOrgDirectoryName(orgId);
+    source.resolvedOrgDirectoryName = orgDirectoryName;
+    source.ownerOrgId = orgId;
+    source.ownerOrgName = this.currentOrganizationLabel();
+
+    if (!source.folderHandle || typeof source.folderHandle.getDirectoryHandle !== 'function') {
+      source.discoveredCollections = [];
+      this.state.workspace.activeProductSourceId = null;
+      return;
+    }
+
+    let orgDirectoryHandle = null;
+    try {
+      orgDirectoryHandle = await source.folderHandle.getDirectoryHandle(orgDirectoryName);
+    } catch (error) {
+      if (error?.name === 'NotFoundError') {
+        source.discoveredCollections = [];
+        this.state.workspace.activeProductSourceId = null;
+        if (this.state.activeWorkspace === 'products') {
+          this.state.currentLevel = 'products-collections';
+          this.state.activeSectionId = null;
+          this.state.selectedEntryRef = null;
+        }
+        this.setStatus(`Products source does not contain ${orgDirectoryName}.`);
+        return;
+      }
+      throw error;
+    }
+
+    const discoveredCollections = [];
+    let warningCount = 0;
+    const previousActive = this.state.workspace.activeProductSourceId;
+
+    for await (const [entryName, entryHandle] of orgDirectoryHandle.entries()) {
+      if (!entryHandle || entryHandle.kind !== 'directory') {
+        continue;
+      }
+      const productDirName = String(entryName || '').trim();
+      if (!productDirName) {
+        continue;
+      }
+
+      let indexFileHandle = null;
+      try {
+        indexFileHandle = await entryHandle.getFileHandle('index.json');
+      } catch (error) {
+        if (error?.name !== 'NotFoundError') {
+          warningCount += 1;
+        }
+        continue;
+      }
+
+      try {
+        const file = await indexFileHandle.getFile();
+        const parsed = JSON.parse(await file.text());
+        if (!isPlainObject(parsed)) {
+          warningCount += 1;
+          continue;
+        }
+
+        const collectionId = slugify(String(parsed.id || '').trim() || productDirName, productDirName);
+        const title = String(parsed.title || parsed.name || parsed.label || '').trim() || productDirName;
+        const stableSourceId = `products-${slugify(orgDirectoryName)}-${slugify(productDirName)}`;
+        const collection = createSourceDescriptor({
+          role: 'products',
+          sourceId: stableSourceId,
+          label: title,
+          ownerOrgId: orgId,
+          ownerOrgName: this.currentOrganizationLabel(),
+          collectionId,
+          connectionType: 'local-file',
+          fileHandle: indexFileHandle,
+          fileName: `${productDirName}/index.json`,
+          sourcePath: `${orgDirectoryName}/${productDirName}/index.json`,
+          isLinkedExternal: false,
+          isLoaded: true,
+          isDirty: false,
+          data: parsed,
+          validation: validateDataRoot('products', parsed),
+        });
+        collection.dirty = false;
+        discoveredCollections.push({
+          ...collection,
+          id: collectionId,
+          title,
+          sourceType: collection.connectionType,
+          linked: false,
+          ownerOrganizationId: orgId,
+          sourceOrganizationId: orgId,
+          orgDirectoryName,
+          productDirectoryName: productDirName,
+          collectionDirectoryHandle: entryHandle,
+          indexFileHandle,
+        });
+      } catch (_error) {
+        warningCount += 1;
+      }
+    }
+
+    discoveredCollections.sort((a, b) => String(a.title || a.id).localeCompare(String(b.title || b.id)));
+    source.discoveredCollections = discoveredCollections;
+
+    const activeExists = discoveredCollections.some((entry) => entry.sourceId === previousActive || entry.id === previousActive);
+    this.state.workspace.activeProductSourceId = activeExists
+      ? previousActive
+      : (discoveredCollections[0]?.sourceId || discoveredCollections[0]?.id || null);
+
+    if (warningCount > 0) {
+      this.setStatus(`Products source resolved ${discoveredCollections.length} collection${discoveredCollections.length === 1 ? '' : 's'} with ${warningCount} warning${warningCount === 1 ? '' : 's'}.`);
+    }
+  }
+
+  async resolveMaterialsSourceForCurrentOrganization() {
+    const source = this.materialRootSource();
+    if (!source || source.connectionType !== 'local-folder') {
+      return;
+    }
+
+    const orgId = String(this.currentOrganizationId() || '').trim();
+    if (!orgId) {
+      source.discoveredCollections = [];
+      source.resolvedOrgDirectoryName = '';
+      this.state.workspace.sources.materials = [];
+      this.state.workspace.activeMaterialSourceId = null;
+      return;
+    }
+
+    source.ownerOrgId = orgId;
+    source.ownerOrgName = this.currentOrganizationLabel();
+
+    if (!source.folderHandle || typeof source.folderHandle.getDirectoryHandle !== 'function') {
+      source.discoveredCollections = [];
+      this.state.workspace.sources.materials = [];
+      this.state.workspace.activeMaterialSourceId = null;
+      return;
+    }
+
+    let suppliersDirectoryHandle = null;
+    try {
+      suppliersDirectoryHandle = await source.folderHandle.getDirectoryHandle('suppliers');
+    } catch (error) {
+      if (error?.name === 'NotFoundError') {
+        source.discoveredCollections = [];
+        source.resolvedOrgDirectoryName = '';
+        this.state.workspace.sources.materials = [];
+        this.state.workspace.activeMaterialSourceId = null;
+        this.setStatus('Materials source missing suppliers directory.');
+        return;
+      }
+      throw error;
+    }
+
+    let orgDirectoryHandle = null;
+    try {
+      orgDirectoryHandle = await suppliersDirectoryHandle.getDirectoryHandle(orgId);
+    } catch (error) {
+      if (error?.name === 'NotFoundError') {
+        source.discoveredCollections = [];
+        source.resolvedOrgDirectoryName = `suppliers/${orgId}`;
+        this.state.workspace.sources.materials = [];
+        this.state.workspace.activeMaterialSourceId = null;
+        if (this.state.activeWorkspace === 'materials') {
+          this.state.currentLevel = 'materials-collections';
+          this.state.activeSectionId = null;
+          this.state.selectedEntryRef = null;
+        }
+        this.setStatus(`Materials source does not contain suppliers/${orgId}.`);
+        return;
+      }
+      throw error;
+    }
+
+    source.resolvedOrgDirectoryName = `suppliers/${orgId}`;
+    const previousActive = this.state.workspace.activeMaterialSourceId;
+    const discoveredCollections = [];
+    let warningCount = 0;
+
+    for await (const [entryName, entryHandle] of orgDirectoryHandle.entries()) {
+      if (!entryHandle || entryHandle.kind !== 'directory') {
+        continue;
+      }
+      const collectionDirName = String(entryName || '').trim();
+      if (!collectionDirName) {
+        continue;
+      }
+
+      let settingsFileHandle = null;
+      try {
+        settingsFileHandle = await entryHandle.getFileHandle('settings.json');
+      } catch (error) {
+        if (error?.name !== 'NotFoundError') {
+          warningCount += 1;
+        }
+        continue;
+      }
+
+      try {
+        const file = await settingsFileHandle.getFile();
+        const parsed = JSON.parse(await file.text());
+        if (!isPlainObject(parsed)) {
+          warningCount += 1;
+          continue;
+        }
+
+        const collectionId = slugify(String(parsed.id || '').trim() || collectionDirName, collectionDirName);
+        const title = String(parsed.title || parsed.name || parsed.label || '').trim() || collectionDirName;
+        const stableSourceId = `materials-${slugify(orgId)}-${slugify(collectionDirName)}`;
+        const collection = createSourceDescriptor({
+          role: 'materials',
+          sourceId: stableSourceId,
+          label: title,
+          ownerOrgId: orgId,
+          ownerOrgName: this.currentOrganizationLabel(),
+          collectionId,
+          connectionType: 'local-file',
+          fileHandle: settingsFileHandle,
+          fileName: `${collectionDirName}/settings.json`,
+          sourcePath: `suppliers/${orgId}/${collectionDirName}/settings.json`,
+          isLinkedExternal: false,
+          isLoaded: true,
+          isDirty: false,
+          data: parsed,
+          validation: validateDataRoot('materials', parsed),
+        });
+        collection.dirty = false;
+        discoveredCollections.push({
+          ...collection,
+          id: collectionId,
+          title,
+          sourceType: collection.connectionType,
+          linked: false,
+          ownerOrganizationId: orgId,
+          sourceOrganizationId: orgId,
+          orgDirectoryName: `suppliers/${orgId}`,
+          collectionDirectoryName: collectionDirName,
+          collectionDirectoryHandle: entryHandle,
+          settingsFileHandle,
+        });
+      } catch (_error) {
+        warningCount += 1;
+      }
+    }
+
+    discoveredCollections.sort((a, b) => String(a.title || a.id).localeCompare(String(b.title || b.id)));
+    source.discoveredCollections = discoveredCollections;
+    this.state.workspace.sources.materials = discoveredCollections;
+
+    const activeExists = discoveredCollections.some((entry) => entry.sourceId === previousActive || entry.id === previousActive);
+    this.state.workspace.activeMaterialSourceId = activeExists
+      ? previousActive
+      : (discoveredCollections[0]?.sourceId || discoveredCollections[0]?.id || null);
+
+    if (warningCount > 0) {
+      this.setStatus(`Materials source resolved ${discoveredCollections.length} collection${discoveredCollections.length === 1 ? '' : 's'} with ${warningCount} warning${warningCount === 1 ? '' : 's'}.`);
+    }
+  }
+
+  async reloadProductCollectionFromIndex(productSourceId) {
+    const sourceRoot = this.productSource();
+    if (!sourceRoot || sourceRoot.connectionType !== 'local-folder') {
+      return;
+    }
+    const list = Array.isArray(sourceRoot.discoveredCollections) ? sourceRoot.discoveredCollections : [];
+    const index = list.findIndex((entry) => entry.sourceId === productSourceId || entry.id === productSourceId);
+    if (index < 0) {
+      return;
+    }
+    const target = list[index];
+    if (!target) {
+      return;
+    }
+
+    let fileHandle = target.indexFileHandle || target.fileHandle || null;
+    if (!fileHandle && target.collectionDirectoryHandle && typeof target.collectionDirectoryHandle.getFileHandle === 'function') {
+      fileHandle = await target.collectionDirectoryHandle.getFileHandle('index.json');
+    }
+    if (!fileHandle) {
+      return;
+    }
+
+    try {
+      const file = await fileHandle.getFile();
+      const parsed = JSON.parse(await file.text());
+      if (!isPlainObject(parsed)) {
+        throw new Error('index.json must contain an object');
+      }
+      const nextTitle = String(parsed.title || parsed.name || parsed.label || '').trim() || target.productDirectoryName || target.title || target.id;
+      const next = {
+        ...target,
+        data: parsed,
+        title: nextTitle,
+        label: nextTitle,
+        fileHandle,
+        indexFileHandle: fileHandle,
+        validation: validateDataRoot('products', parsed),
+        isLoaded: true,
+      };
+      sourceRoot.discoveredCollections = list.map((entry, entryIndex) => (entryIndex === index ? next : entry));
+    } catch (error) {
+      this.setStatus(`Failed to load ${target.fileName || 'index.json'}: ${error.message}`);
+    }
+  }
+
+  async reloadMaterialCollectionFromSettings(materialSourceId) {
+    const sourceRoot = this.materialRootSource();
+    if (!sourceRoot || sourceRoot.connectionType !== 'local-folder') {
+      return;
+    }
+    const list = this.materialSources();
+    const index = list.findIndex((entry) => entry.sourceId === materialSourceId || entry.id === materialSourceId);
+    if (index < 0) {
+      return;
+    }
+    const target = list[index];
+    if (!target) {
+      return;
+    }
+
+    let fileHandle = target.settingsFileHandle || target.fileHandle || null;
+    if (!fileHandle && target.collectionDirectoryHandle && typeof target.collectionDirectoryHandle.getFileHandle === 'function') {
+      fileHandle = await target.collectionDirectoryHandle.getFileHandle('settings.json');
+    }
+    if (!fileHandle) {
+      return;
+    }
+
+    try {
+      const file = await fileHandle.getFile();
+      const parsed = JSON.parse(await file.text());
+      if (!isPlainObject(parsed)) {
+        throw new Error('settings.json must contain an object');
+      }
+      const nextTitle = String(parsed.title || parsed.name || parsed.label || '').trim() || target.collectionDirectoryName || target.title || target.id;
+      const next = {
+        ...target,
+        data: parsed,
+        title: nextTitle,
+        label: nextTitle,
+        fileHandle,
+        settingsFileHandle: fileHandle,
+        validation: validateDataRoot('materials', parsed),
+        isLoaded: true,
+      };
+      this.state.workspace.sources.materials = list.map((entry, entryIndex) => (entryIndex === index ? next : entry));
+      sourceRoot.discoveredCollections = this.state.workspace.sources.materials;
+    } catch (error) {
+      this.setStatus(`Failed to load ${target.fileName || 'settings.json'}: ${error.message}`);
+    }
+  }
+
+  async discoverOrganizationsFromRootFolder(rootHandle) {
+    const organizations = [];
+    const warnings = [];
+    const entries = [];
+    for await (const [entryName, entryHandle] of rootHandle.entries()) {
+      entries.push([entryName, entryHandle]);
+    }
+
+    for (const [entryName, entryHandle] of entries) {
+      if (!entryHandle || entryHandle.kind !== 'directory') {
+        continue;
+      }
+
+      const folderName = String(entryName || '').trim();
+      if (!folderName) {
+        continue;
+      }
+
+      const infoFileName = `${folderName}_info.json`;
+      let infoFileHandle = null;
+      try {
+        infoFileHandle = await entryHandle.getFileHandle(infoFileName);
+      } catch (error) {
+        if (error?.name !== 'NotFoundError') {
+          warnings.push(`${folderName}: ${error.message}`);
+        }
+        continue;
+      }
+
+      try {
+        const file = await infoFileHandle.getFile();
+        const parsed = JSON.parse(await file.text());
+        if (!isPlainObject(parsed)) {
+          warnings.push(`${folderName}: ${infoFileName} must contain a JSON object.`);
+          continue;
+        }
+        const label = String(parsed.name || parsed.title || parsed.label || '').trim() || folderName;
+        const orgId = folderName;
+        organizations.push({
+          id: orgId,
+          label,
+          folderName,
+          infoFileName,
+          directoryHandle: entryHandle,
+          infoFileHandle,
+        });
+      } catch (error) {
+        warnings.push(`${folderName}: invalid ${infoFileName} (${error.message}).`);
+      }
+    }
+
+    organizations.sort((a, b) => String(a.label).localeCompare(String(b.label)));
+    return { organizations, warnings };
+  }
+
+  async loadOrganizationInfoForCurrentSelection() {
+    const source = this.manufacturerSource();
+    const selectedId = String(this.currentOrganizationId() || '').trim();
+    if (!source || source.connectionType !== 'local-folder' || !selectedId) {
+      return false;
+    }
+
+    const discovered = Array.isArray(source.discoveredOrganizations) ? source.discoveredOrganizations : [];
+    const match = discovered.find((entry) => entry.id === selectedId);
+    if (!match) {
+      return false;
+    }
+
+    let infoFileHandle = match.infoFileHandle || null;
+    if (!infoFileHandle && source.folderHandle && typeof source.folderHandle.getDirectoryHandle === 'function') {
+      const dirHandle = await source.folderHandle.getDirectoryHandle(match.folderName);
+      infoFileHandle = await dirHandle.getFileHandle(match.infoFileName);
+    }
+    if (!infoFileHandle) {
+      return false;
+    }
+
+    const file = await infoFileHandle.getFile();
+    const parsed = JSON.parse(await file.text());
+    if (!isPlainObject(parsed)) {
+      throw new Error(`${match.infoFileName} does not contain an object`);
+    }
+
+    source.data = parsed;
+    source.fileHandle = infoFileHandle;
+    source.fileName = match.infoFileName;
+    source.ownerOrgId = selectedId;
+    source.ownerOrgName = match.label;
+    source.selectedOrganizationId = selectedId;
+    source.isLoaded = true;
+    source.isDirty = false;
+    source.dirty = false;
+    source.validation = validateDataRoot('general', parsed);
+    return true;
   }
 
   async openCollectionFile(workspace) {
