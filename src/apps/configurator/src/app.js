@@ -10,6 +10,7 @@ import {
   sourceDescriptorLabel,
 } from './workspace/source-model.js';
 import { loadWorkspaceSnapshot, saveWorkspaceSnapshot } from './workspace/workspace-persistence.js';
+import { getPlatform, revivePlatformHandle } from '../../../shared/platform/index.js';
 
 const WORKSPACES = new Set(['general', 'products', 'materials']);
 
@@ -70,6 +71,8 @@ const MATERIAL_SECTION_ORDER = [
 const GENERAL_SECTION_ORDER = ['info', 'supplierLinks', 'availableCollections', 'packages', 'products', 'globalSettings', 'settings', 'defaults'];
 
 const DEFAULT_CARD_SECTIONS = new Set(['products-collections', 'materials-collections', 'products-entries:blocks']);
+
+const platform = getPlatform();
 
 const RELATION_FIELD_TARGETS = {
   categoryId: 'categories',
@@ -1084,6 +1087,8 @@ class OpenConfiguratorManagerElement extends HTMLElement {
     }
     return createSourceDescriptor({
       ...raw,
+      fileHandle: revivePlatformHandle(raw.fileHandle),
+      folderHandle: revivePlatformHandle(raw.folderHandle),
       data: null,
       validation: createEmptyValidation(),
     });
@@ -2541,13 +2546,8 @@ class OpenConfiguratorManagerElement extends HTMLElement {
   }
 
   async openOrganizationSourceFolder() {
-    if (typeof window.showDirectoryPicker !== 'function') {
-      this.setStatus('Organization source folder selection is not supported in this browser.');
-      return;
-    }
-
     try {
-      const rootHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      const rootHandle = await platform.openDirectory();
       if (!rootHandle) {
         return;
       }
@@ -2610,13 +2610,8 @@ class OpenConfiguratorManagerElement extends HTMLElement {
   }
 
   async openProductsSourceFolder() {
-    if (typeof window.showDirectoryPicker !== 'function') {
-      this.setStatus('Products source folder selection is not supported in this browser.');
-      return;
-    }
-
     try {
-      const rootHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      const rootHandle = await platform.openDirectory();
       if (!rootHandle) {
         return;
       }
@@ -2664,13 +2659,8 @@ class OpenConfiguratorManagerElement extends HTMLElement {
   }
 
   async openMaterialsSourceFolder() {
-    if (typeof window.showDirectoryPicker !== 'function') {
-      this.setStatus('Materials source folder selection is not supported in this browser.');
-      return;
-    }
-
     try {
-      const rootHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      const rootHandle = await platform.openDirectory();
       if (!rootHandle) {
         return;
       }
@@ -3189,25 +3179,15 @@ class OpenConfiguratorManagerElement extends HTMLElement {
 
   async openJsonPicker() {
     try {
-      if (typeof window.showOpenFilePicker === 'function') {
-        const [handle] = await window.showOpenFilePicker({
-          multiple: false,
-          types: [
-            {
-              description: 'JSON files',
-              accept: {
-                'application/json': ['.json'],
-              },
-            },
-          ],
-        });
-
-        if (!handle) {
-          return;
-        }
-
-        const file = await handle.getFile();
-        await this.handleOpenedFile(file, handle);
+      const picked = await platform.openJsonFile();
+      if (picked) {
+        const file = {
+          name: picked.name || picked.handle?.name || 'data.json',
+          async text() {
+            return picked.text;
+          },
+        };
+        await this.handleOpenedFile(file, picked.handle || null);
         return;
       }
 
@@ -3394,38 +3374,11 @@ class OpenConfiguratorManagerElement extends HTMLElement {
   }
 
   async saveTextAsFile(text, suggestedName) {
-    if (typeof window.showSaveFilePicker === 'function') {
-      const handle = await window.showSaveFilePicker({
-        suggestedName,
-        types: [
-          {
-            description: 'JSON files',
-            accept: {
-              'application/json': ['.json'],
-            },
-          },
-        ],
-      });
-      if (!handle) {
-        return;
-      }
-      await this.writeToHandle(handle, text);
-      return;
-    }
-
-    const blob = new Blob([text], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = suggestedName;
-    link.click();
-    URL.revokeObjectURL(url);
+    await platform.saveTextFile(text, { suggestedName });
   }
 
   async writeToHandle(handle, text) {
-    const writable = await handle.createWritable();
-    await writable.write(text);
-    await writable.close();
+    await platform.writeTextFile(handle, text);
   }
 
   applyEntryChange(detail) {

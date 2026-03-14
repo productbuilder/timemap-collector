@@ -1,0 +1,26 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Open Collections Workbench",
+  "version": "0.1.0",
+  "identifier": "org.opencollections.workbench",
+  "build": {
+    "beforeDevCommand": "python3 -m http.server 1420 --bind 127.0.0.1 -d ../../..",
+    "devUrl": "http://127.0.0.1:1420/src/desktop/workbench/index.html",
+    "frontendDist": "../../.."
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Open Collections Workbench",
+        "width": 1320,
+        "height": 900,
+        "resizable": true
+      }
+    ]
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": []
+  }
+}

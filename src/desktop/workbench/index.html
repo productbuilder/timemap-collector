@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Open Collections Workbench</title>
+    <style>
+      body { margin: 0; font-family: system-ui, sans-serif; background: #0f1218; color: #e7ecf3; }
+      .launcher { display: grid; gap: 12px; padding: 20px; max-width: 420px; margin: 48px auto; }
+      .launcher button { padding: 12px 16px; border-radius: 10px; border: 1px solid #2b3342; background: #182033; color: inherit; cursor: pointer; text-align: left; }
+      .bar { display: none; gap: 8px; align-items: center; padding: 10px; border-bottom: 1px solid #2b3342; background: #151b29; }
+      .bar.show { display: flex; }
+      .bar button { padding: 6px 10px; }
+      .host { height: calc(100vh - 48px); }
+      .hidden { display: none; }
+    </style>
+  </head>
+  <body>
+    <div id="launcher" class="launcher">
+      <h1>Open Collections Workbench</h1>
+      <p>Choose which app to launch in this desktop shell.</p>
+      <button type="button" data-launch="collector">Collector</button>
+      <button type="button" data-launch="configurator">Configurator</button>
+    </div>
+
+    <div id="bar" class="bar">
+      <button id="backBtn" type="button">← Launcher</button>
+      <strong id="appTitle">App</strong>
+    </div>
+
+    <div id="host" class="host hidden"></div>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>

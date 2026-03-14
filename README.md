@@ -53,6 +53,11 @@ src/
   apps/
     collector/
     browser/
+    configurator/
+  desktop/
+    workbench/
+  shared/
+    platform/
   library/
     core/
   packages/
@@ -85,3 +90,6 @@ index.html
 - GitHub publish uploads originals (`media/`), thumbnails (`thumbs/`), and updates `collection.json`.
 - Publishing remains provider-backed (GitHub/other storage), separate from OPFS local drafts.
 - Secrets are not stored in OPFS.
+
+- Desktop workbench shell (Tauri) is available under `src/desktop/workbench` and can launch Collector or Configurator from one native window.
+- Shared browser/desktop file APIs are centralized in `src/shared/platform` to avoid direct Tauri API calls in app components.

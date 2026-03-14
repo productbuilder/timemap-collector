@@ -8,6 +8,7 @@ import {
 } from '../../../packages/provider-gdrive/src/index.js';
 import { COLLECTOR_CONFIG } from './config.js';
 import { createOpfsStorage } from './services/opfs_storage.js';
+import { getPlatform } from '../../../shared/platform/index.js';
 import { createInitialState } from './state/initial-state.js';
 import { makeSourceId, toWorkspaceItemId } from './utils/id-utils.js';
 import './components/manager-header.js';
@@ -32,6 +33,7 @@ const SOURCES_STORAGE_KEY = 'timemap_collector_sources_v1';
 const COLLECTIONS_DIR_PATH = 'collections';
 const SOURCES_DIR_PATH = 'sources';
 const DRAFT_ASSETS_DIR_PATH = 'draft-assets';
+const platform = getPlatform();
 
 class OpenCollectionsManagerElement extends HTMLElement {
   constructor() {
@@ -956,14 +958,8 @@ class OpenCollectionsManagerElement extends HTMLElement {
   }
 
   async pickLocalFolder() {
-    if (typeof window.showDirectoryPicker !== 'function') {
-      this.dom.sourceManager?.setLocalFolderStatus('This browser does not support folder picking yet.', 'warn');
-      this.setStatus('Folder picking is not supported in this browser.', 'warn');
-      return;
-    }
-
     try {
-      const handle = await window.showDirectoryPicker();
+      const handle = await platform.openDirectory();
       const folderName = (handle?.name || '').trim() || 'Selected folder';
       this.selectedLocalDirectoryHandle = handle || null;
       this.dom.sourceManager?.setConfigValues({
