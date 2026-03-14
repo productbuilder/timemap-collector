@@ -10,7 +10,13 @@ import {
   sourceDescriptorLabel,
 } from './workspace/source-model.js';
 import { loadWorkspaceSnapshot, saveWorkspaceSnapshot } from './workspace/workspace-persistence.js';
-import { getPlatform, revivePlatformHandle } from '../../../shared/platform/index.js';
+import { revivePlatformHandle } from '../../../shared/platform/index.js';
+import {
+  openJsonSourceFile,
+  openSourceDirectory,
+  saveSourceText,
+  writeSourceText,
+} from './platform/configurator-source-api.js';
 
 const WORKSPACES = new Set(['general', 'products', 'materials']);
 
@@ -72,7 +78,6 @@ const GENERAL_SECTION_ORDER = ['info', 'supplierLinks', 'availableCollections', 
 
 const DEFAULT_CARD_SECTIONS = new Set(['products-collections', 'materials-collections', 'products-entries:blocks']);
 
-const platform = getPlatform();
 
 const RELATION_FIELD_TARGETS = {
   categoryId: 'categories',
@@ -2547,7 +2552,7 @@ class OpenConfiguratorManagerElement extends HTMLElement {
 
   async openOrganizationSourceFolder() {
     try {
-      const rootHandle = await platform.openDirectory();
+      const rootHandle = await openSourceDirectory();
       if (!rootHandle) {
         return;
       }
@@ -2611,7 +2616,7 @@ class OpenConfiguratorManagerElement extends HTMLElement {
 
   async openProductsSourceFolder() {
     try {
-      const rootHandle = await platform.openDirectory();
+      const rootHandle = await openSourceDirectory();
       if (!rootHandle) {
         return;
       }
@@ -2660,7 +2665,7 @@ class OpenConfiguratorManagerElement extends HTMLElement {
 
   async openMaterialsSourceFolder() {
     try {
-      const rootHandle = await platform.openDirectory();
+      const rootHandle = await openSourceDirectory();
       if (!rootHandle) {
         return;
       }
@@ -3179,7 +3184,7 @@ class OpenConfiguratorManagerElement extends HTMLElement {
 
   async openJsonPicker() {
     try {
-      const picked = await platform.openJsonFile();
+      const picked = await openJsonSourceFile();
       if (picked) {
         const file = {
           name: picked.name || picked.handle?.name || 'data.json',
@@ -3191,7 +3196,6 @@ class OpenConfiguratorManagerElement extends HTMLElement {
         return;
       }
 
-      this.dom.openFileInput.click();
     } catch (error) {
       if (error?.name === 'AbortError') {
         return;
@@ -3374,11 +3378,11 @@ class OpenConfiguratorManagerElement extends HTMLElement {
   }
 
   async saveTextAsFile(text, suggestedName) {
-    await platform.saveTextFile(text, { suggestedName });
+    await saveSourceText(text, suggestedName);
   }
 
   async writeToHandle(handle, text) {
-    await platform.writeTextFile(handle, text);
+    await writeSourceText(handle, text);
   }
 
   applyEntryChange(detail) {
