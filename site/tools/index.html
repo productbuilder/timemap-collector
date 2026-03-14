@@ -3,19 +3,19 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<title>Tools | Open Collections Protocol</title>
+		<title>Tools | Open Collections</title>
 		<link rel="stylesheet" href="../../index.css" />
 	</head>
 	<body class="docs-page">
 		<div class="site-header">
 			<div class="site-header-inner">
-				<div class="site-brand">Open Collections Protocol</div>
+				<div class="site-brand">Open Collections</div>
 				<nav class="site-nav" aria-label="Primary navigation">
 					<a href="../../">Home</a>
-					<a href="../docs/open-collections-protocol.html">Protocol</a>
 					<a href="./" class="is-active" aria-current="page">Tools</a>
+					<a href="../get-started/">Get started</a>
 					<a href="../hosting/">Hosting</a>
-					<a href="../docs/">Documentation</a>
+					<a href="../docs/">Docs</a>
 				</nav>
 			</div>
 		</div>
@@ -24,43 +24,29 @@
 			<p class="breadcrumbs"><a href="../../">Home</a> / Tools</p>
 			<header>
 				<h1>Tools</h1>
-				<p>
-					Open Collections Protocol is the shared model for publishing and discovering collections.
-					These tools make that model practical: helping teams publish, register, index, and browse
-					collections with ordinary web URLs.
-				</p>
+				<p>Open Collections includes practical tools for creating and browsing collections. Start with the two tools most teams need first.</p>
 			</header>
 
 			<section>
-				<h2>Core tools</h2>
+				<h2>Main tools</h2>
 				<div class="link-grid">
 					<article class="tool-card">
 						<h3>Collection Manager</h3>
-						<p>
-							Create, update, and publish collection manifests and item records without hand-editing JSON.
-						</p>
-						<p>
-							Collection Manager is browser-first and can also run in a desktop app shell for teams that prefer
-							working with local folders.
-						</p>
-						<p><strong>Purpose:</strong> publishing workflows for collection owners and editors.</p>
-						<p><strong>Best for:</strong> teams preparing and releasing collections, including local-folder-based workflows.</p>
+						<p>Use Collection Manager to organize files, add collection details, and save your updates.</p>
+						<p>It runs in the browser and can also be used in a desktop-style shell for local-folder workflows.</p>
 						<div class="chip-row">
 							<span class="chip ok">Available now</span>
 						</div>
 						<div class="cta-row">
 							<a class="button-link" href="../../src/apps/collector/" target="_blank" rel="noopener">Open Collection Manager</a>
-							<a class="button-link button-link-secondary" href="../docs/publish-a-collection.html">Publish guide</a>
+							<a class="button-link button-link-secondary" href="../get-started/">Get started guide</a>
 						</div>
 					</article>
 
 					<article class="tool-card">
 						<h3>Collection Browser</h3>
-						<p>
-							Explore published collections in a friendly interface for websites, portals, and discovery pages.
-						</p>
-						<p><strong>Purpose:</strong> practical viewing and navigation for published content.</p>
-						<p><strong>Best for:</strong> readers, researchers, and public catalog experiences.</p>
+						<p>Use Collection Browser to open and explore collections in a friendly viewing experience.</p>
+						<p>It works well for websites, public pages, and internal browsing workflows.</p>
 						<div class="chip-row">
 							<span class="chip ok">Available now</span>
 						</div>
@@ -69,74 +55,16 @@
 							<a class="button-link button-link-secondary" href="../demo/">View demo</a>
 						</div>
 					</article>
-
-					<article class="tool-card">
-						<h3>Collection Registry</h3>
-						<p>
-							Keeps track of known collection endpoints so systems can discover what has been published.
-						</p>
-						<p><strong>Purpose:</strong> shared discovery and registration workflows.</p>
-						<p><strong>Best for:</strong> aggregators, ecosystem hubs, and directory services.</p>
-						<div class="chip-row">
-							<span class="chip stub">Planned service</span>
-							<span class="chip">Documentation available</span>
-						</div>
-						<div class="cta-row">
-							<a class="button-link button-link-secondary" href="../docs/collection-registry-and-indexer.html">Registry docs</a>
-						</div>
-					</article>
-
-					<article class="tool-card">
-						<h3>Collection Indexer</h3>
-						<p>
-							Processes collection manifests and items into search and discovery outputs for portals and APIs.
-						</p>
-						<p><strong>Purpose:</strong> fast discovery, filtering, and search readiness.</p>
-						<p><strong>Best for:</strong> search experiences and multi-collection catalogs.</p>
-						<div class="chip-row">
-							<span class="chip stub">Planned service</span>
-							<span class="chip">Documentation available</span>
-						</div>
-						<div class="cta-row">
-							<a class="button-link button-link-secondary" href="../docs/collection-registry-and-indexer.html">Indexer docs</a>
-						</div>
-					</article>
 				</div>
 			</section>
 
 			<section>
-				<h2>Components and embedding</h2>
-				<p>
-					Collection Manager and Collection Browser are also available as embeddable web components.
-					You can place them inside websites, portals, apps, or existing collection systems.
-				</p>
-				<pre><code>&lt;script type="module" src="/src/apps/collector/src/index.js"&gt;&lt;/script&gt;
-&lt;collection-manager&gt;&lt;/collection-manager&gt;</code></pre>
-				<p>
-					This loads the Collection Manager component directly and renders it inline on your page.
-					See full options in <a href="../docs/components-and-embedding.html">components and embedding</a>.
-				</p>
-			</section>
-
-			<section>
-				<h2>How the tools fit together</h2>
+				<h2>More technical tools</h2>
+				<p>Registry and indexer services are still part of the ecosystem, but they are implementation-focused and documented in Docs.</p>
 				<ul>
-					<li>Publish with <strong>Collection Manager</strong>.</li>
-					<li>Register endpoints in <strong>Collection Registry</strong>.</li>
-					<li>Process content with <strong>Collection Indexer</strong>.</li>
-					<li>Browse and reuse with <strong>Collection Browser</strong>.</li>
-				</ul>
-			</section>
-
-			<section>
-				<h2>Related links</h2>
-				<ul>
-					<li><a href="../docs/open-collections-protocol.html">Protocol</a></li>
-					<li><a href="../hosting/">Storage providers and hosting guidance</a></li>
+					<li><a href="../docs/collection-registry-and-indexer.html">Registry and indexer overview</a></li>
 					<li><a href="../docs/components-and-embedding.html">Components and embedding</a></li>
-					<li><a href="../docs/wordpress-integration.html">WordPress integration</a></li>
-					<li><a href="../docs/publish-a-collection.html">Publish a collection</a></li>
-					<li><a href="../demo/">Demo</a></li>
+					<li><a href="../docs/tools-overview.html">Tools overview in Docs</a></li>
 				</ul>
 			</section>
 		</main>
