@@ -1,7 +1,7 @@
 const NAV_ITEMS = [
 	{ key: 'home', label: 'Home', href: '' },
-	{ key: 'tools', label: 'Tools', href: 'site/tools/' },
 	{ key: 'get-started', label: 'Get started', href: 'site/get-started/' },
+	{ key: 'tools', label: 'Tools', href: 'site/tools/' },
 	{ key: 'hosting', label: 'Hosting', href: 'site/hosting/' },
 	{ key: 'docs', label: 'Docs', href: 'site/docs/' },
 ];
