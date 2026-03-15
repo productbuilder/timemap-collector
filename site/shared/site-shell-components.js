@@ -69,10 +69,10 @@ class OpenCollectionsSiteFooter extends HTMLElement {
 				.map((item) => `<a href="${basePath}${item.href}">${item.label}</a>`)
 				.join('');
 			return `
-				<section class="site-footer-group">
+				<div class="site-footer-group">
 					<h2>${group.title}</h2>
 					<nav class="site-footer-nav" aria-label="${group.title}">${links}</nav>
-				</section>
+				</div>
 			`;
 		}).join('');
 
