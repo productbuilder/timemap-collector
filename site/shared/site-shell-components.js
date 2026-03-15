@@ -6,12 +6,29 @@ const NAV_ITEMS = [
 	{ key: 'docs', label: 'Docs', href: 'site/docs/' },
 ];
 
-const FOOTER_LINKS = [
-	{ label: 'Home', href: '' },
-	{ label: 'Tools', href: 'site/tools/' },
-	{ label: 'Get started', href: 'site/get-started/' },
-	{ label: 'Hosting', href: 'site/hosting/' },
-	{ label: 'Docs', href: 'site/docs/' },
+const FOOTER_GROUPS = [
+	{
+		title: 'Project',
+		links: [
+			{ label: 'Home', href: '' },
+			{ label: 'Get started', href: 'site/get-started/' },
+			{ label: 'Tools', href: 'site/tools/' },
+		],
+	},
+	{
+		title: 'Docs and developer',
+		links: [
+			{ label: 'Docs', href: 'site/docs/' },
+			{ label: 'Hosting', href: 'site/hosting/' },
+		],
+	},
+	{
+		title: 'Collections',
+		links: [
+			{ label: 'Registry', href: 'site/registry/' },
+			{ label: 'Organizations', href: '#organizations-using-open-collections' },
+		],
+	},
 ];
 
 const toBasePath = (value) => {
@@ -47,13 +64,26 @@ class OpenCollectionsSiteHeader extends HTMLElement {
 class OpenCollectionsSiteFooter extends HTMLElement {
 	connectedCallback() {
 		const basePath = toBasePath(this.getAttribute('base-path'));
-		const footerLinks = FOOTER_LINKS.map((item) => `<a href="${basePath}${item.href}">${item.label}</a>`).join('');
+		const footerGroups = FOOTER_GROUPS.map((group) => {
+			const links = group.links
+				.map((item) => `<a href="${basePath}${item.href}">${item.label}</a>`)
+				.join('');
+			return `
+				<section class="site-footer-group">
+					<h2>${group.title}</h2>
+					<nav class="site-footer-nav" aria-label="${group.title}">${links}</nav>
+				</section>
+			`;
+		}).join('');
 
 		this.innerHTML = `
 			<footer class="site-footer">
 				<div class="site-footer-inner">
-					<p class="site-footer-text">Open Collections</p>
-					<nav class="site-footer-nav" aria-label="Footer navigation">${footerLinks}</nav>
+					<div class="site-footer-brand-block">
+						<p class="site-footer-text">Open Collections</p>
+						<p class="site-footer-description">An open, web-based approach to publishing and sharing cultural collections.</p>
+					</div>
+					<div class="site-footer-links-grid">${footerGroups}</div>
 				</div>
 			</footer>
 		`;

@@ -14,7 +14,7 @@
 		<main>
 			<header class="hero">
 				<p class="eyebrow">Open Collections</p>
-				<h1>Webcollections are like websites <span class="hero-headline-break">for cultural collections.</span></h1>
+				<h1><span class="hero-keyword">Webcollections</span> <span class="hero-headline-break">are like websites for cultural collections.</span></h1>
 				<p class="lead">
 					The Open Collections Protocol makes it simple to publish and share cultural collections on the web in an open format built on plain web standards. No database required. Host them anywhere, link them across the web, and keep them reusable over time.
 				</p>
@@ -94,7 +94,7 @@
 				</div>
 			</section>
 
-			<section class="section-utility">
+			<section class="section-utility section-registry-preview">
 				<div class="section-heading-row">
 					<h2>Explore registered collections</h2>
 					<a href="./site/registry/">View full registry</a>
@@ -105,11 +105,12 @@
 					intro="A quick view of recent registrations from the Open Collections registry."
 					recent-url="/api/registry/recent?limit=4"
 					recent-limit="4"
+					list-only
 					api-mode="mock"
 				></open-collections-registry-widget>
 			</section>
 
-			<section class="section-soft">
+			<section class="section-soft" id="organizations-using-open-collections">
 				<h2>Organizations using Open Collections</h2>
 				<p>
 					Public organization profiles can be listed here as institutions adopt Open Collections. The section is intentionally lightweight so new

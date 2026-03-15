@@ -75,7 +75,7 @@ function normalizeRecentItems(payload) {
 
 class OpenCollectionsRegistryWidgetElement extends HTMLElement {
   static get observedAttributes() {
-    return ['submit-url', 'recent-url', 'recent-limit', 'api-mode', 'title', 'intro'];
+    return ['submit-url', 'recent-url', 'recent-limit', 'api-mode', 'title', 'intro', 'list-only'];
   }
 
   constructor() {
@@ -145,6 +145,11 @@ class OpenCollectionsRegistryWidgetElement extends HTMLElement {
 
   get titleText() {
     return safeText(this.getAttribute('title')) || 'Register a collection';
+  }
+
+
+  get listOnlyMode() {
+    return this.hasAttribute('list-only');
   }
 
   get introText() {
@@ -685,24 +690,30 @@ class OpenCollectionsRegistryWidgetElement extends HTMLElement {
       </style>
       <section class="widget">
         <header>
-          <h2 class="title">${escapeHtml(this.titleText)}</h2>
-          <p class="intro">${escapeHtml(this.introText)}</p>
+          ${this.listOnlyMode ? '' : `<h2 class="title">${escapeHtml(this.titleText)}</h2>`}
+          ${this.introText ? `<p class="intro">${escapeHtml(this.introText)}</p>` : ''}
         </header>
-        <form class="form" id="registryForm">
-          <label for="registryUrlInput">Collection URL</label>
-          <div class="form-row">
-            <input
-              id="registryUrlInput"
-              name="registryUrl"
-              type="url"
-              placeholder="https://example.org/my-collection/collection.json"
-              value="${escapeHtml(this.state.urlValue)}"
-              required
-            />
-            <button type="submit" ${disabled}>${buttonLabel}</button>
-          </div>
-        </form>
-        ${feedbackMarkup}
+        ${
+          this.listOnlyMode
+            ? ''
+            : `
+                <form class="form" id="registryForm">
+                  <label for="registryUrlInput">Collection URL</label>
+                  <div class="form-row">
+                    <input
+                      id="registryUrlInput"
+                      name="registryUrl"
+                      type="url"
+                      placeholder="https://example.org/my-collection/collection.json"
+                      value="${escapeHtml(this.state.urlValue)}"
+                      required
+                    />
+                    <button type="submit" ${disabled}>${buttonLabel}</button>
+                  </div>
+                </form>
+                ${feedbackMarkup}
+              `
+        }
         <section class="recent-section" aria-live="polite">
           <h3 class="recent-heading">Recently added</h3>
           ${this.renderRecentList()}
@@ -712,10 +723,12 @@ class OpenCollectionsRegistryWidgetElement extends HTMLElement {
 
     const form = this.shadowRoot.querySelector('#registryForm');
     const input = this.shadowRoot.querySelector('#registryUrlInput');
-    form?.addEventListener('submit', (event) => {
-      this.onSubmit(event).catch(() => {});
-    });
-    input?.addEventListener('input', (event) => this.onInput(event));
+    if (!this.listOnlyMode) {
+      form?.addEventListener('submit', (event) => {
+        this.onSubmit(event).catch(() => {});
+      });
+      input?.addEventListener('input', (event) => this.onInput(event));
+    }
   }
 }
 
