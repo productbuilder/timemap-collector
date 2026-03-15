@@ -5,7 +5,7 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>Docs: Protocol | Open Collections</title>
 		<link rel="stylesheet" href="../../index.css" />
-			<script type="module" src="../shared/site-shell-components.js"></script>
+		<script type="module" src="../shared/site-shell-components.js"></script>
 	</head>
 	<body class="docs-page">
 		<open-collections-site-header base-path="../../" active-page="docs"></open-collections-site-header>
@@ -16,144 +16,291 @@
 				<aside class="docs-sidebar" aria-label="Docs navigation" data-docs-nav></aside>
 				<div class="docs-content">
 					<header>
-						<h1>Open Collections protocol</h1>
+						<h1>Open Collections Protocol</h1>
 						<p>
-							The protocol defines how collections are published as stable web resources. It keeps the core simple for static hosting while
-							allowing optional capabilities for larger and more dynamic collections.
+							Open Collections Protocol is a lightweight, web-native way to publish collections with stable URLs,
+							JSON files, and static hosting.
+						</p>
+						<p>
+							This page defines the protocol itself; other docs pages cover implementation details and tooling.
+						</p>
+						<p>
+							The architectural model is <strong>LinkedCollections</strong>, and the domain-level discovery
+							mechanism is <strong>Domain Collections Discovery (DCD)</strong>.
 						</p>
 					</header>
 
 					<section>
-						<h2>Protocol scope</h2>
+						<h2>1. Why this protocol exists</h2>
 						<p>
-							A valid collection is centered on a <code>collection.json</code> manifest plus item detail files and media files. The manifest
-							acts as an index that points to richer data instead of trying to carry a full record store in a single file.
+							Many collections are trapped inside custom platforms, local databases, or one-off APIs. That makes
+							long-term access and cross-institution discovery harder than it needs to be.
 						</p>
-						<ul>
-							<li>Core protocol: stable URLs, manifest, item detail references, and web-friendly publication.</li>
-							<li>Optional capabilities: pagination, filtering, and incremental sync fields for large collections.</li>
-							<li>Additive design: optional fields never invalidate a simple core collection.</li>
-						</ul>
+						<p>
+							This protocol lowers that barrier by defining a simple publication surface based on HTTP, URLs, and
+							JSON files that can be hosted almost anywhere.
+						</p>
 					</section>
 
 					<section>
-						<h2>Minimal core manifest</h2>
-						<p>The core structure intentionally stays small and readable.</p>
+						<h2>2. Core protocol and optional capabilities</h2>
+						<p>The protocol is intentionally layered:</p>
+						<ul>
+							<li>
+								<strong>Core protocol:</strong> stable URLs, a collection manifest, item detail files, media
+								assets, and DCD discovery.
+							</li>
+							<li>
+								<strong>Optional capabilities:</strong> scalable collection access patterns for very large
+								collections (for example pagination, filtering, and incremental sync).
+							</li>
+						</ul>
+						<p>
+							A collection is valid and publishable using only the core protocol. Optional capabilities are
+							additive, not required.
+						</p>
+					</section>
+
+					<section>
+						<h2>3. Core model in simple terms</h2>
+						<table>
+							<thead>
+								<tr>
+									<th>Web concept</th>
+									<th>Protocol concept</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td>Website</td>
+									<td>Collection</td>
+								</tr>
+								<tr>
+									<td><code>index.html</code></td>
+									<td><code>collection.json</code> manifest</td>
+								</tr>
+								<tr>
+									<td>Web page</td>
+									<td>Item record</td>
+								</tr>
+								<tr>
+									<td>Image/file</td>
+									<td>Media asset URL</td>
+								</tr>
+								<tr>
+									<td>Search engine</td>
+									<td>Collection Indexer</td>
+								</tr>
+								<tr>
+									<td>Browser</td>
+									<td>Collection Browser</td>
+								</tr>
+							</tbody>
+						</table>
+					</section>
+
+					<section>
+						<h2>4. Baseline publication model (static-friendly)</h2>
+						<p>
+							Small and medium collections can work well with one manifest file plus linked item and media files.
+						</p>
+						<p class="code-label">Example collection manifest (core)</p>
 						<pre><code>{
-  "id": "harbor-collection",
-  "title": "Harbor Collection",
-  "description": "Historic harbor maps",
+  "id": "rotterdam-harbor",
+  "title": "Rotterdam Harbor Collection",
   "protocolVersion": "1.0",
-  "canonicalUrl": "https://museum-example.org/collections/harbor/collection.json",
+  "canonicalUrl": "https://museum-example.org/collections/rotterdam/collection.json",
   "license": "CC BY 4.0",
   "rightsStatement": "https://rightsstatements.org/vocab/InC/1.0/",
   "items": [
     {
-      "id": "harbor-map-001",
-      "title": "Harbor Map 001",
+      "id": "map-123",
+      "title": "Harbor map, 1898",
       "type": "image",
-      "thumbnailUrl": "thumbs/harbor-map-001.jpg",
-      "detailUrl": "items/harbor-map-001.json",
+      "thumbnailUrl": "123.thumb.jpg",
+      "detailUrl": "123.json",
       "updatedAt": "2025-09-01T12:00:00Z"
+    }
+  ]
+}</code></pre>
+						<p class="code-label">Example item record (core)</p>
+						<pre><code>{
+  "id": "map-123",
+  "title": "Harbor map, 1898",
+  "canonicalUrl": "https://museum-example.org/collections/rotterdam/123.json",
+  "date": "1898",
+  "license": "CC BY 4.0",
+  "attribution": "Museum Example",
+  "assets": [
+    {
+      "role": "full",
+      "url": "123.jpg",
+      "mimeType": "image/jpeg"
+    }
+  ],
+  "extensions": {
+    "ocp:geo": {
+      "lat": 51.9244,
+      "lon": 4.4777
+    }
+  }
+}</code></pre>
+						<p class="code-label">Example host-root structure</p>
+						<pre><code>/collections.json
+/collections/rotterdam/collection.json
+/collections/rotterdam/123.json
+/collections/rotterdam/123.jpg
+/collections/rotterdam/123.thumb.jpg</code></pre>
+						<p>
+							Use <code>collections.json</code> as the host index, then keep each collection folder flat:
+							<code>collection.json</code> plus the files it references.
+						</p>
+					</section>
+
+					<section>
+						<h2>5. Large collections and scalability (optional)</h2>
+						<p>
+							For very large collections, a single manifest that lists every item can become impractical. In
+							those cases, publishers can add <strong>Collection Access Capabilities</strong>.
+						</p>
+						<p>
+							These capabilities are optional and do not replace the core model. They provide scalable access
+							patterns while keeping the protocol web-native.
+						</p>
+						<p class="code-label">Example manifest with optional capabilities</p>
+						<pre><code>{
+  "id": "rotterdam-harbor",
+  "title": "Rotterdam Harbor Collection",
+  "protocolVersion": "1.0",
+  "capabilities": {
+    "pagination": true,
+    "filtering": true,
+    "incrementalSync": true
+  },
+  "itemsPageUrl": "https://museum-example.org/collections/rotterdam/entries?page=1",
+  "queries": {
+    "itemSearchUrlTemplate": "https://museum-example.org/collections/rotterdam/entries{?page,pageSize,type,from,to,updatedAfter}"
+  }
+}</code></pre>
+						<p class="code-label">Example paginated response (optional capability)</p>
+						<pre><code>{
+  "items": [
+    {
+      "id": "map-123",
+      "title": "Harbor map, 1898",
+      "type": "image",
+      "thumbnailUrl": "123.thumb.jpg",
+      "detailUrl": "123.json",
+      "updatedAt": "2025-09-01T12:00:00Z"
+    }
+  ],
+  "nextPageUrl": "https://museum-example.org/collections/rotterdam/entries?page=2"
+}</code></pre>
+						<p>
+							See
+							<a href="./optional-collection-access-capabilities.html">Optional Collection Access Capabilities</a>
+							for guidance.
+						</p>
+					</section>
+
+					<section>
+						<h2>6. Versioning, identity, extensions, and rights</h2>
+						<ul>
+							<li>
+								<strong>Protocol versioning:</strong> include a top-level <code>protocolVersion</code> (for
+								example <code>"1.0"</code>).
+							</li>
+							<li>
+								<strong>Schema direction:</strong> publish JSON Schema definitions for manifests, item records,
+								and optional capability objects.
+							</li>
+							<li>
+								<strong>Identity:</strong> use canonical URLs as primary public identifiers; local IDs remain
+								useful internal keys.
+							</li>
+							<li>
+								<strong>Mirrors:</strong> mirrors are allowed, but canonical URLs should be explicit so consumers
+								can reconcile duplicates.
+							</li>
+							<li>
+								<strong>Extensions:</strong> prefer namespaced extension objects (for example
+								<code>extensions.ocp:geo</code>) to avoid collisions.
+							</li>
+							<li>
+								<strong>Rights metadata:</strong> include clear rights, license, usage, and attribution fields
+								whenever possible.
+							</li>
+						</ul>
+					</section>
+
+					<section>
+						<h2>7. Domain discovery (DCD)</h2>
+						<p>
+							DCD is a small file at <code>/.well-known/collections.json</code> that declares which collections a
+							domain considers authoritative.
+						</p>
+						<p class="code-label">Example domain discovery file</p>
+						<pre><code>{
+  "domain": "museum-example.org",
+  "collections": [
+    {
+      "id": "rotterdam-harbor",
+      "title": "Rotterdam Harbor Collection",
+      "manifestUrl": "https://cdn.museum-example.org/collections/rotterdam/collection.json",
+      "canonicalUrl": "https://museum-example.org/collections/rotterdam/collection.json"
     }
   ]
 }</code></pre>
 					</section>
 
 					<section>
-						<h2>Top-level fields</h2>
-						<ul>
-							<li><code>id</code>: stable collection identifier.</li>
-							<li><code>title</code>, <code>description</code>: human-facing collection description.</li>
-							<li><code>protocolVersion</code>: compatibility marker (for example <code>"1.0"</code>).</li>
-							<li><code>canonicalUrl</code>: canonical public URL for the manifest.</li>
-							<li><code>license</code>, <code>rightsStatement</code>: rights metadata.</li>
-							<li><code>items</code>: lightweight item summaries linking to detail files.</li>
-							<li><code>capabilities</code> and <code>queries</code>: optional scalability and query declarations.</li>
-						</ul>
-					</section>
-
-					<section>
-						<h2>Item summaries and item detail files</h2>
-						<p>
-							Keep item summaries lightweight in the manifest (<code>id</code>, <code>title</code>, <code>type</code>, <code>thumbnailUrl</code>,
-							<code>detailUrl</code>, optional <code>updatedAt</code>). Put richer metadata into dedicated item detail files.
-						</p>
-						<p>
-							This split keeps top-level indexes fast to fetch while still supporting deep metadata for downstream indexing and specialized
-							applications.
-						</p>
-					</section>
-
-					<section>
-						<h2>Identity model: local IDs, URLs, and hashes</h2>
-						<p>
-							The protocol supports layered identity. Use local IDs for authoring convenience, canonical URLs for global identity, and optional
-							content hashes for verification and deduplication.
-						</p>
-						<ul>
-							<li>URL answers: where the resource is.</li>
-							<li>Hash answers: what the resource contains.</li>
-							<li>Together they support mirrors, integrity checks, and long-term portability.</li>
-						</ul>
-					</section>
-
-					<section>
-						<h2>Optional capabilities for large collections</h2>
-						<p>
-							Large collections may need paged listing and filtered retrieval. The protocol supports this additively through capability
-							declarations and query templates.
-						</p>
+						<h2>8. Linked collections</h2>
+						<p>A collection can reference other collections for federation and reuse.</p>
+						<p class="code-label">Example linked collection entry</p>
 						<pre><code>{
-  "capabilities": {
-    "pagination": true,
-    "filtering": true,
-    "incrementalSync": true
-  },
-  "itemsPageUrl": "https://museum-example.org/collections/harbor/items?page=1",
-  "queries": {
-    "itemSearchUrlTemplate": "https://museum-example.org/collections/harbor/items{?page,pageSize,type,updatedAfter}"
-  }
+  "id": "north-sea-maps",
+  "title": "North Sea Map Collections",
+  "items": [
+    {
+      "id": "rotterdam-maps",
+      "type": "collection",
+      "url": "https://museum-a.org/collections/rotterdam/collection.json"
+    },
+    {
+      "id": "antwerp-maps",
+      "type": "collection",
+      "url": "https://archive-b.be/collections/antwerp/collection.json"
+    }
+  ]
 }</code></pre>
-						<p>
-							Collections without these fields remain fully valid. Optional capability support is for scale, not for baseline compatibility.
-						</p>
 					</section>
 
 					<section>
-						<h2>Discovery and ecosystem layering</h2>
+						<h2>9. Protocol maturity and next steps</h2>
 						<p>
-							Publishing and discovery are intentionally separate. Owners publish collections at their own URLs; registries and indexers can then
-							aggregate those collections for search and multi-collection browsing.
+							The protocol model is conceptually strong and already useful for publication. It is also still
+							maturing.
 						</p>
+						<p>Likely maturity steps:</p>
 						<ul>
-							<li>Publishing layer: manifest, item files, and assets via normal HTTP hosting.</li>
-							<li>Identity layer: canonical URLs and optional content hashes.</li>
-							<li>Discovery layer: registry and indexer services for aggregation.</li>
-							<li>Presentation layer: manager, browser, and custom consumers.</li>
+							<li>Publish a formal versioned specification.</li>
+							<li>Maintain JSON Schema definitions for core and optional structures.</li>
+							<li>Stabilize versioning and compatibility guidance.</li>
+							<li>Document optional scalability capabilities more deeply across implementations.</li>
+							<li>Ship multiple reference implementations (publisher, browser, indexer).</li>
 						</ul>
 					</section>
 
 					<section>
-						<h2>Extension and schema direction</h2>
-						<p>
-							Extensions should be additive and namespaced to prevent collisions. The protocol should continue to mature with maintained JSON
-							schemas for manifests, item records, and optional capability blocks.
-						</p>
-						<p>
-							Guiding principle: keep the base manifest easy to publish and index, then layer richer features without breaking the core model.
-						</p>
-					</section>
-
-					<section>
-						<h2>Related docs</h2>
+						<h2>10. Practical next steps</h2>
 						<ul>
-							<li><a href="./optional-collection-access-capabilities.html">Optional capabilities</a></li>
-							<li><a href="./collection-registry-and-indexer.html">Registry and indexer</a></li>
-							<li><a href="./developer-reference.html">Developer reference</a></li>
-							<li><a href="../../docs/collection-manifest-spec.md">Collection manifest specification source</a></li>
-							<li><a href="../../docs/distributed-ecosystem-model.md">Distributed ecosystem model source</a></li>
-							<li><a href="../../docs/resource-identity.md">Resource identity source</a></li>
+							<li><a href="./publish-a-collection.html">Publish a collection</a></li>
+							<li>
+								<a href="./optional-collection-access-capabilities.html">Optional Collection Access Capabilities</a>
+							</li>
+							<li><a href="../hosting/">Choose hosting</a></li>
+							<li><a href="../tools/">Understand tool roles</a></li>
+							<li><a href="../tools/">Open available tools</a></li>
 						</ul>
 					</section>
 				</div>
