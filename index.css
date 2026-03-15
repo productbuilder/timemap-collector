@@ -327,22 +327,37 @@ main > section:nth-of-type(odd):not(.section-soft):not(.section-intro):not(.sect
 	opacity: 0.72;
 }
 
-.oc-icon-bullet {
+.home-icon {
+	width: 1.125rem;
+	height: 1.125rem;
+	inline-size: 1.125rem;
+	block-size: 1.125rem;
+	color: #1f2937;
+	opacity: 0.68;
+}
+
+.home-icon-bullet {
+	width: 1rem;
+	height: 1rem;
 	inline-size: 1rem;
 	block-size: 1rem;
-	opacity: 0.7;
+	opacity: 0.66;
 }
 
-.oc-icon-step {
-	inline-size: 1.25rem;
-	block-size: 1.25rem;
-	opacity: 0.78;
+.home-icon-step {
+	width: 1.4rem;
+	height: 1.4rem;
+	inline-size: 1.4rem;
+	block-size: 1.4rem;
+	opacity: 0.72;
 }
 
-.oc-icon-audience {
-	inline-size: 1.05rem;
-	block-size: 1.05rem;
-	opacity: 0.74;
+.home-icon-audience {
+	width: 1.1rem;
+	height: 1.1rem;
+	inline-size: 1.1rem;
+	block-size: 1.1rem;
+	opacity: 0.68;
 }
 
 .feature-list.icon-list {
@@ -356,7 +371,7 @@ main > section:nth-of-type(odd):not(.section-soft):not(.section-intro):not(.sect
 	gap: 0.45rem;
 }
 
-.feature-list.icon-list .oc-icon {
+.feature-list.icon-list .home-icon {
 	margin-top: 0.16rem;
 }
 
