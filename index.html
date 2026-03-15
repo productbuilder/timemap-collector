@@ -5,7 +5,8 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>Open Collections</title>
 		<link rel="stylesheet" href="./index.css" />
-			<script type="module" src="./site/shared/site-shell-components.js"></script>
+		<script type="module" src="./site/shared/site-shell-components.js"></script>
+		<script type="module" src="./src/shared/components/open-collections-registry-widget.js"></script>
 	</head>
 	<body>
 		<open-collections-site-header base-path="./" active-page="home"></open-collections-site-header>
@@ -24,6 +25,21 @@
 				</div>
 			</header>
 
+			<section class="section-intro split-layout">
+				<div>
+					<h2>Collections that behave like websites</h2>
+					<p>
+						Open Collections treats collections as web resources. You can host them on your own infrastructure, publish them with your existing workflows, and keep them readable over time.
+					</p>
+				</div>
+				<ul class="feature-list">
+					<li>Host collections anywhere on the web</li>
+					<li>Link collections across sites and systems</li>
+					<li>Reuse collections in tools and platforms</li>
+					<li>Keep a portable format based on plain web standards</li>
+				</ul>
+			</section>
+
 			<section>
 				<h2>Start from the files you already have</h2>
 				<p>
@@ -33,11 +49,11 @@
 				<p>One collection can live in one folder, making it easier to understand, move, and maintain over time.</p>
 			</section>
 
-			<section>
+			<section class="section-soft">
 				<h2>Designed for archives, museums, and design libraries</h2>
 				<p>
 					Whether you are working with archival material, object photography, exhibition assets, material libraries, or product collections,
-					Open Collections helps bring files and metadata together in a way that stays understandable for both teams and visitors.
+					Open Collections helps bring files and metadata together in a way that stays understandable for teams and visitors.
 				</p>
 			</section>
 
@@ -63,13 +79,61 @@
 				</div>
 			</section>
 
+			<section class="split-layout">
+				<div>
+					<h2>Integrate collections with your tools</h2>
+					<p>
+						Open Collections is a protocol as well as a workflow. Collections can be consumed by applications, connected to platforms, and
+						integrated into existing systems without changing the core format.
+					</p>
+				</div>
+				<div class="panel-list">
+					<p><strong>For collection teams:</strong> publish once and share across channels.</p>
+					<p><strong>For platforms:</strong> read open collection files from different hosts.</p>
+					<p><strong>For developers:</strong> build integrations for APIs, catalogs, and internal tools.</p>
+				</div>
+			</section>
+
+			<section class="section-utility">
+				<div class="section-heading-row">
+					<h2>Explore registered collections</h2>
+					<a href="./site/registry/">View full registry</a>
+				</div>
+				<p>Browse recently registered collections to see how organizations are publishing collections on the web.</p>
+				<open-collections-registry-widget
+					title="Recently registered collections"
+					intro="A quick view of recent registrations from the Open Collections registry."
+					recent-url="/api/registry/recent?limit=4"
+					recent-limit="4"
+					api-mode="mock"
+				></open-collections-registry-widget>
+			</section>
+
+			<section class="section-soft">
+				<h2>Organizations using Open Collections</h2>
+				<p>
+					Public organization profiles can be listed here as institutions adopt Open Collections. The section is intentionally lightweight so new
+					organizations can be added over time.
+				</p>
+				<div class="org-grid">
+					<article class="org-card">
+						<h3>Early adopters</h3>
+						<p>No public organizations are listed yet.</p>
+					</article>
+					<article class="org-card">
+						<h3>Want to be listed?</h3>
+						<p><a href="./site/registry/">Register a collection</a> and share your organization through the registry workflow.</p>
+					</article>
+				</div>
+			</section>
+
 			<section>
 				<h2>Simple for collection teams, flexible for technical support</h2>
 				<p>
 					Open Collections is designed to be approachable for curators, archivists, librarians, collection managers, and design teams, while
 					still giving developers and technical colleagues a clear foundation for hosting, integration, and extension.
 				</p>
-				<p>That means teams can begin with a familiar workflow and grow into more advanced setups when needed.</p>
+				<p>Teams can begin with a familiar workflow and grow into more advanced setups when needed.</p>
 			</section>
 
 			<section>
