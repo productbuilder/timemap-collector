@@ -380,8 +380,11 @@ main > section:nth-of-type(odd):not(.section-soft):not(.section-intro):not(.sect
 .lead {
 	font-size: clamp(1rem, 1.45vw, 1.16rem);
 	line-height: 1.72;
-	max-width: 66ch;
 	color: #0f172a;
+}
+
+.hero .lead {
+	max-width: 56ch;
 }
 
 .cta-row {
@@ -495,7 +498,7 @@ main > section:nth-of-type(odd):not(.section-soft):not(.section-intro):not(.sect
 		display: inline;
 	}
 
-	.lead {
+	.hero .lead {
 		max-width: 45ch;
 		font-size: 1rem;
 		line-height: 1.65;
