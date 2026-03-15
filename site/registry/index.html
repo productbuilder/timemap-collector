@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Registry | Open Collections</title>
+		<link rel="stylesheet" href="../../index.css" />
+		<script type="module" src="../shared/site-shell-components.js"></script>
+		<script type="module" src="../../src/shared/components/open-collections-registry-widget.js"></script>
+	</head>
+	<body class="docs-page">
+		<open-collections-site-header base-path="../../"></open-collections-site-header>
+
+		<main>
+			<p class="breadcrumbs"><a href="../../">Home</a> / Registry</p>
+
+			<header class="hero">
+				<h1>Register a collection</h1>
+				<p class="lead">Add a collection or collection source to the Open Collections registry. Enter a URL, we check it, and if it is valid it can appear in the registry.</p>
+			</header>
+
+			<section>
+				<h2>Submit a URL</h2>
+				<open-collections-registry-widget submit-url="/api/registry/register" recent-url="/api/registry/recent?limit=5" recent-limit="5"></open-collections-registry-widget>
+			</section>
+
+			<section>
+				<h2>How it works</h2>
+				<ul>
+					<li>Submit a single collection URL or a collections source URL.</li>
+					<li>Open Collections checks whether the URL is valid.</li>
+					<li>If it passes validation, it can be added to the registry.</li>
+					<li>Recent registered collections appear in the list above.</li>
+				</ul>
+				<p>Want the technical details? Read the Docs for registry behavior and architecture.</p>
+				<p><a href="../docs/collection-registry-and-indexer.html">Registry and indexer docs</a></p>
+			</section>
+		</main>
+
+		<open-collections-site-footer base-path="../../"></open-collections-site-footer>
+	</body>
+</html>
